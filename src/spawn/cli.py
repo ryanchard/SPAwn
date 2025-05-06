@@ -185,19 +185,7 @@ def crawl(
         for file in files:
             print(file)
         return
-    
-    # Get search index from options or config
-    index_uuid = search_index or config.globus_search_index
-    if not index_uuid:
-        logger.error("No Globus Search index UUID provided")
-        sys.exit(1)
-    
-    # Get auth token from options or config
-    token = auth_token or config.globus_auth_token
-    
-    # Get visible_to from options or config
-    visible_to_list = list(visible_to) if visible_to else config.globus_search_visible_to
-    
+
     # Save metadata to JSON if requested
     if save_json:
         from spawn.metadata import extract_metadata, save_metadata_to_json
@@ -215,9 +203,22 @@ def crawl(
         
         logger.info(f"Saved metadata for {json_count} files to JSON")
     
+    
+    # Get search index from options or config
+    index_uuid = search_index or config.globus_search_index
+    if not index_uuid:
+        logger.error("No Globus Search index UUID provided")
+        sys.exit(1)
+    
+    # Get auth token from options or config
+    token = auth_token or config.globus_auth_token
+    
+    # Get visible_to from options or config
+    visible_to_list = list(visible_to) if visible_to else config.globus_search_visible_to
+
     # Publish metadata to Globus Search
     logger.info(f"Publishing metadata to Globus Search index: {index_uuid}")
-    
+
     result = publish_metadata(
         file_paths=files,
         index_uuid=index_uuid,
