@@ -10,6 +10,8 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
+from globus_sdk import SearchClient
+
 import requests
 
 from spawn.config import config
@@ -23,7 +25,7 @@ class GlobusSearchClient:
     def __init__(
         self,
         index_uuid: str,
-        auth_token: Optional[str] = None,
+        search_client: SearchClient,
         base_url: str = "https://search.api.globus.org/v1",
     ):
         """
@@ -31,16 +33,12 @@ class GlobusSearchClient:
 
         Args:
             index_uuid: UUID of the Globus Search index.
-            auth_token: Globus Auth token with search.ingest scope.
-                If None, uses the token from config or environment.
+            search_client: Globus SearchClient
             base_url: Globus Search API base URL.
         """
         self.index_uuid = index_uuid
-        self.auth_token = auth_token or config.globus_auth_token
+        self.search_client = search_client
         self.base_url = base_url
-        
-        if not self.auth_token:
-            logger.warning("No Globus Auth token provided. Some operations may fail.")
     
     def _get_headers(self) -> Dict[str, str]:
         """
@@ -52,10 +50,7 @@ class GlobusSearchClient:
         headers = {
             "Content-Type": "application/json",
         }
-        
-        if self.auth_token:
-            headers["Authorization"] = f"Bearer {self.auth_token}"
-        
+
         return headers
     
     def ingest_entry(self, entry: Dict[str, Any]) -> Dict[str, Any]:
@@ -85,11 +80,8 @@ class GlobusSearchClient:
             },
         }
         
-        response = requests.post(
-            url,
-            headers=self._get_headers(),
-            json=ingest_doc,
-        )
+        response = self.search_client.ingest(self.index_uuid, ingest_doc)
+
         
         if response.status_code != 200:
             raise ValueError(f"Failed to ingest entry: {response.json().get('error', response.text)}")
@@ -110,7 +102,6 @@ class GlobusSearchClient:
         Raises:
             ValueError: If the ingest fails.
         """
-        url = f"{self.base_url}/ingest/{self.index_uuid}"
         
         # Process entries in batches
         success_count = 0
@@ -128,20 +119,18 @@ class GlobusSearchClient:
             }
             
             try:
-                response = requests.post(
-                    url,
-                    headers=self._get_headers(),
-                    json=ingest_doc,
-                )
+                response = self.search_client.ingest(self.index_uuid, ingest_doc)
                 
-                if response.status_code != 200:
+                logger.info(response)
+
+                if response.success != "true":
                     logger.error(f"Failed to ingest batch: {response.json().get('error', response.text)}")
                     failed_count += len(batch)
                 else:
                     success_count += len(batch)
                     
-                    # Add a small delay to avoid rate limiting
-                    time.sleep(0.1)
+                # Add a small delay to avoid rate limiting
+                time.sleep(0.1)
             except Exception as e:
                 logger.error(f"Error ingesting batch: {e}")
                 failed_count += len(batch)
@@ -209,7 +198,7 @@ class GlobusSearchClient:
 
 
 def metadata_to_gmeta_entry(
-    file_path: Path,
+    file_path: str,
     metadata: Dict[str, Any],
     subject_prefix: str = "file://",
     visible_to: Optional[List[str]] = None,
@@ -240,9 +229,9 @@ def metadata_to_gmeta_entry(
 
 
 def publish_metadata(
-    file_paths: List[Path],
+    metadata: Dict[str, str],
     index_uuid: str,
-    auth_token: Optional[str] = None,
+    search_client: SearchClient,
     batch_size: int = 100,
     subject_prefix: str = "file://",
     visible_to: Optional[List[str]] = None,
@@ -251,9 +240,9 @@ def publish_metadata(
     Publish metadata to Globus Search.
 
     Args:
-        file_paths: List of file paths to publish metadata for.
+        metadata: The metadata to be published.
         index_uuid: UUID of the Globus Search index.
-        auth_token: Globus Auth token with search.ingest scope.
+        search_client: Globus SearchClient.
         batch_size: Number of entries to ingest in a single batch.
         subject_prefix: Prefix to use for the subject.
         visible_to: List of Globus Auth identities that can see these entries.
@@ -266,28 +255,22 @@ def publish_metadata(
     # Create Globus Search client
     client = GlobusSearchClient(
         index_uuid=index_uuid,
-        auth_token=auth_token,
+        search_client=search_client,
     )
     
     # Extract metadata and create GMetaEntries
     entries = []
-    
-    for file_path in file_paths:
-        try:
-            # Extract metadata
-            metadata = extract_metadata(file_path)
-            
-            # Convert to GMetaEntry
-            entry = metadata_to_gmeta_entry(
-                file_path=file_path,
-                metadata=metadata,
-                subject_prefix=subject_prefix,
-                visible_to=visible_to,
-            )
-            
-            entries.append(entry)
-        except Exception as e:
-            logger.error(f"Error processing file {file_path}: {e}")
+
+    # Convert to GMetaEntry
+    for k, v in metadata.items():
+        entry = metadata_to_gmeta_entry(
+            file_path=k,
+            metadata=v,
+            subject_prefix=subject_prefix,
+            visible_to=visible_to,
+        )
+                
+        entries.append(entry)
     
     # Ingest entries
     return client.ingest_entries(entries, batch_size=batch_size)

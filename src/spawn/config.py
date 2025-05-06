@@ -180,11 +180,6 @@ class Config:
         return self.get("github", {}).get("username") or os.environ.get("GITHUB_USERNAME")
     
     @property
-    def globus_auth_token(self) -> Optional[str]:
-        """Get the Globus Auth token."""
-        return self.get("globus", {}).get("auth_token") or os.environ.get("GLOBUS_AUTH_TOKEN")
-    
-    @property
     def globus_search_index(self) -> Optional[str]:
         """Get the Globus Search index UUID."""
         return self.get("globus", {}).get("search_index") or os.environ.get("GLOBUS_SEARCH_INDEX")

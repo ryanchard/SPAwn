@@ -9,6 +9,10 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
+import globus_sdk
+from globus_sdk import UserApp, ClientApp
+from globus_sdk import SearchClient, FlowsClient
+
 import click
 
 from spawn.config import config, load_config
@@ -112,10 +116,6 @@ def cli(config_file: Optional[Path], verbose: bool):
     help="Globus Search index UUID",
 )
 @click.option(
-    "--auth-token",
-    help="Globus Auth token with search.ingest scope",
-)
-@click.option(
     "--visible-to",
     multiple=True,
     help="Globus Auth identities that can see entries (can be used multiple times)",
@@ -146,7 +146,6 @@ def crawl(
     polling_rate: Optional[float],
     ignore_dot_dirs: bool,
     search_index: Optional[str],
-    auth_token: Optional[str],
     visible_to: List[str],
     save_json: Optional[bool],
     json_dir: Optional[Path],
@@ -205,15 +204,18 @@ def crawl(
         save_metadata_to_json(metadata, json_dir)
         logger.info(f"Saved metadata for {json_count} files to JSON")
     
-    
     # Get search index from options or config
     index_uuid = search_index or config.globus_search_index
     if not index_uuid:
         logger.error("No Globus Search index UUID provided")
-        sys.exit(1)
+        return
     
-    # Get auth token from options or config
-    token = auth_token or config.globus_auth_token
+    # Get a Globus Auth token for Search
+    
+    app = UserApp("SPAwn CLI App", client_id="367628a1-4b6a-4176-82bd-422f071d1adc")
+    app.add_scope_requirements({'search': [globus_sdk.scopes.SearchScopes.make_mutable("all")]})
+    # app.login()
+    search_client = SearchClient(app=app)
     
     # Get visible_to from options or config
     visible_to_list = list(visible_to) if visible_to else config.globus_search_visible_to
@@ -222,9 +224,9 @@ def crawl(
     logger.info(f"Publishing metadata to Globus Search index: {index_uuid}")
 
     result = publish_metadata(
-        file_paths=files,
+        metadata=metadata,
         index_uuid=index_uuid,
-        auth_token=token,
+        search_client=search_client,
         visible_to=visible_to_list,
     )
     
@@ -244,7 +246,6 @@ def crawl(
 def get_entry(
     subject: Optional[str],
     search_index: Optional[str],
-    auth_token: Optional[str],
 ):
     """
     Get an entry from Globus Search.
@@ -618,7 +619,6 @@ def remote_crawl_cmd(
     save_json: Optional[bool],
     json_dir: Optional[Path],
     search_index: Optional[str],
-    auth_token: Optional[str],
     visible_to: List[str],
     wait: bool,
     timeout: int,
