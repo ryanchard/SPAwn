@@ -153,12 +153,11 @@ def extract_metadata(file_path: Path) -> Dict[str, Any]:
     return metadata
 
 
-def save_metadata_to_json(file_path: Path, metadata: Dict[str, Any], output_dir: Optional[Path] = None) -> Path:
+def save_metadata_to_json(metadata: Dict[str, Any], output_dir: Optional[Path] = None) -> Path:
     """
     Save metadata to a JSON file.
 
     Args:
-        file_path: Path to the original file.
         metadata: Dictionary of metadata to save.
         output_dir: Directory to save the JSON file in. If None, uses the same directory as the file.
 
@@ -168,10 +167,7 @@ def save_metadata_to_json(file_path: Path, metadata: Dict[str, Any], output_dir:
     # Determine output directory
     if output_dir is None:
         output_dir = config.get("metadata", {}).get("json_dir")
-        if output_dir:
-            output_dir = Path(output_dir).expanduser().absolute()
-        else:
-            output_dir = file_path.parent
+        output_dir = Path(output_dir).expanduser().absolute()
     else:
         output_dir = Path(output_dir).expanduser().absolute()
     
@@ -179,10 +175,11 @@ def save_metadata_to_json(file_path: Path, metadata: Dict[str, Any], output_dir:
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # Create JSON filename based on original filename
-    json_filename = f"{file_path.stem}_metadata.json"
+    json_filename = f"SPAwn_metadata.json"
     json_path = output_dir / json_filename
     
     # Save metadata to JSON file
+    print(json_path)
     try:
         with open(json_path, "w") as f:
             json.dump(metadata, f, indent=2, default=str)

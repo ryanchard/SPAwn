@@ -186,6 +186,8 @@ def crawl(
             print(file)
         return
 
+    metadata = {}
+
     # Save metadata to JSON if requested
     if save_json:
         from spawn.metadata import extract_metadata, save_metadata_to_json
@@ -195,12 +197,12 @@ def crawl(
         
         for file_path in files:
             try:
-                metadata = extract_metadata(file_path)
-                save_metadata_to_json(file_path, metadata, json_dir)
+                metadata[str(file_path.absolute())] = extract_metadata(file_path)
                 json_count += 1
             except Exception as e:
                 logger.error(f"Error saving metadata for {file_path}: {e}")
         
+        save_metadata_to_json(metadata, json_dir)
         logger.info(f"Saved metadata for {json_count} files to JSON")
     
     
