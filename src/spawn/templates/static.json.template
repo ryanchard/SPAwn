@@ -1,0 +1,10 @@
+{
+  "index": {
+    "uuid": "{{ index_name }}",
+    "name": "{{ index_name }}"
+  },
+  "branding": {
+    "title": "{{ portal_title }}",
+    "subtitle": "{{ portal_subtitle }}"
+  }
+}
