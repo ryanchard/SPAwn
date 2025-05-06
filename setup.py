@@ -34,15 +34,6 @@ setup(
             "globus-automate-client>=0.15.0",
         ],
     },
-    extras_require={
-        "dev": [
-            "pytest>=6.0.0",
-            "black>=21.5b2",
-            "isort>=5.9.0",
-            "flake8>=3.9.0",
-            "mypy>=0.812",
-        ],
-    },
     entry_points={
         "console_scripts": [
             "spawn=spawn.cli:main",

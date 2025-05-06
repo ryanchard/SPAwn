@@ -191,7 +191,7 @@ class SPAwnFlow:
                         "token.$": "$.github_token"
                     },
                     "ResultPath": "$.configure_result",
-                    "End": true
+                    "End": True
                 }
             }
         }

@@ -8,7 +8,7 @@ configuration settings for the SPAwn tool.
 import os
 import yaml
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, List
 
 
 class Config:
