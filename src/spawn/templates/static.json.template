@@ -1,10 +1,55 @@
 {
-  "index": {
-    "uuid": "{{ index_name }}",
-    "name": "{{ index_name }}"
+  "_static": {
+    "generator": {
+      "name": "@globus/static-search-portal"
+    }
   },
-  "branding": {
-    "title": "{{ portal_title }}",
-    "subtitle": "{{ portal_subtitle }}"
+  "data": {
+    "version": "1.0.0",
+    "attributes": {
+      "metadata": {
+        "title": "{{ portal_title }}"
+      },
+      "content": {
+        "headline": "{{ portal_subtitle }}"
+      },
+      "features": {
+        "transfer": false
+      },
+      "components": {
+        "Result": {
+          "heading": "entries[0].content.name",
+          "fields": [
+            {
+              "label": "Tags",
+              "property": "entries[0].content.tags"
+            },
+            {
+              "label": "Region",
+              "property": "entries[0].content.region"
+            }
+          ]
+        }
+      },
+      "globus": {
+        "search": {
+          "index": "{{ index_name }}",
+          "facets": [
+            {
+              "name": "Tags",
+              "field_name": "tags",
+              "type": "terms",
+              "size": 10
+            },
+            {
+              "name": "Region",
+              "field_name": "region",
+              "type": "terms",
+              "size": 10
+            }
+          ]
+        }
+      }
+    }
   }
 }

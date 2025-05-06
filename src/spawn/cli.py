@@ -214,7 +214,6 @@ def crawl(
     
     app = UserApp("SPAwn CLI App", client_id="367628a1-4b6a-4176-82bd-422f071d1adc")
     app.add_scope_requirements({'search': [globus_sdk.scopes.SearchScopes.make_mutable("all")]})
-    # app.login()
     search_client = SearchClient(app=app)
     
     # Get visible_to from options or config
