@@ -250,7 +250,7 @@ def publish_metadata(
     Returns:
         Dictionary with counts of successful and failed publish operations.
     """
-    from spawn.metadata import extract_metadata
+    from spawn.extractors.metadata import extract_metadata
     
     # Create Globus Search client
     client = GlobusSearchClient(

@@ -431,7 +431,7 @@ def create_and_run_flow(
         If wait is False, returns the flow run ID.
     """
     # Import here to avoid circular imports
-    from spawn.globus_compute import register_functions
+    from spawn.globus.globus_compute import register_functions
 
     # Register functions with Globus Compute
     function_ids = register_functions(compute_endpoint_id)

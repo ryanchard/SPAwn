@@ -1,0 +1,228 @@
+[build-system]
+requires = ["setuptools>=77.0", "setuptools_scm[toml]>=8.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.copyright]
+copyright = "2014-2025, APS"
+
+[project]
+name = "spawn"
+version = "0.1.0"
+description = "Static Portal Automatic web indexer"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+    { name = "SPAwn Team" },
+]
+license = { file = "LICENSE" }
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+]
+dependencies = [
+    "pyyaml>=6.0",
+    "click>=8.0.0",
+    "python-dotenv>=0.19.0",
+    "requests>=2.25.0",
+    "jinja2>=3.0.0",
+    "tqdm>=4.62.0",
+    "gitpython>=3.1.0",
+    "globus-sdk>=3.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.0.0",
+    "black>=21.5b2",
+    "isort>=5.9.0",
+    "flake8>=3.9.0",
+    "mypy>=0.812",
+]
+compute = [
+    "globus-compute-sdk>=2.0.0",
+]
+flow = [
+    "globus-automate-client>=0.15.0",
+]
+
+# doc: conda install conda-forge::pandoc
+doc = [
+    "babel",
+    "ipykernel",
+    "jinja2",
+    "markupsafe",
+    "myst_parser",
+    "nbsphinx",
+    "pydata-sphinx-theme",
+    "pygments-ipython-console",
+    "pygments",
+    "sphinx-design",
+    "sphinx-tabs",
+    "sphinx",
+    "graphviz",
+    "dot",
+]
+
+all = ["spawn[dev,doc]"]
+
+[project.urls]
+"Homepage" = ""
+"Bug Tracker" = ""
+
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+include = '\.pyi?$'
+exclude = '''
+
+(
+  /(
+      \.eggs         # exclude a few common directories in the
+    | \.git          # root of the project
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | \.pytest_cache
+    | _build
+    | build
+    | dist
+    | docs
+  )/
+)
+'''
+
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = [
+    "E203", # See https://github.com/PyCQA/pycodestyle/issues/373
+    "E402", # module level import not at top of file (for cansas.py)
+    "E501",
+    "F401", # imported but unused
+    "F405", # symbol may be undefined, or defined from star imports
+    "F722", # allow Annotated[typ, some_func("some string")]
+    "F811", # support typing.overload decorator
+    "W503",
+    "W504",
+]
+
+[tool.isort]
+force_single_line = true
+# multi_line_output = 1
+line_length = 88
+include_trailing_comma = true
+
+[tool.pytest.ini_options]
+# https://docs.pytest.org/en/stable/customize.html
+addopts = ["--import-mode=importlib", "-x"]
+junit_family = "xunit1"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+
+[tool.ruff]
+# https://docs.astral.sh/ruff/configuration/
+
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".mypy_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "build",
+    "dist",
+    "venv",
+    ".venv",
+    "docs",
+]
+
+# Same as Black.
+line-length = 88
+indent-width = 4
+
+# Assume Python 3.11
+target-version = "py311"
+
+[tool.ruff.lint]
+# Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
+select = [
+    # pycodestyle
+    "E",
+    # Pyflakes
+    "F",
+    # pyupgrade
+    # "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    # "SIM",
+    # isort
+    "I",
+    # Warning
+    "W",
+    # pydocstyle
+    "D100",
+    "D101",
+    "D102",
+    "D103",
+    "D104",
+    "D105",
+    "D106",
+    "D107",
+    # ruff
+    # "RUF"
+]
+
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.per-file-ignores]
+"*.ipynb" = [
+    "F405", # symbol may be undefined, or defined from star imports
+]
+
+[tool.ruff.lint.isort]
+force-single-line = true # Enforces single-line imports
+
+[tool.ruff.format]
+# Like Black, use double quotes for strings.
+quote-style = "double"
+
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "auto"
+
+[tool.setuptools]
+package-dir = {"spawn" = "src/spawn"}
+
+[tool.setuptools.package-data]
+"*" = ["*.yml", "*.sh"]
+
+[tool.setuptools_scm]
+write_to = "src/spawn/_version.py"
+
+[project.scripts]
+spawn = "spawn.cli:main"

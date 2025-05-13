@@ -78,7 +78,7 @@ def remote_crawl_directory(
     
     # Import spawn modules
     from spawn.crawler import crawl_directory
-    from spawn.metadata import extract_metadata
+    from spawn.extractors.metadata import extract_metadata
     
     # Convert directory path to Path object
     directory = Path(directory_path)

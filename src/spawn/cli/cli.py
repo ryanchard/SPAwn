@@ -1,7 +1,12 @@
 """
-Command-line interface for SPAwn.
-
-This module provides a command-line interface for the SPAwn tool.
+This file has been refactored. CLI commands have been moved to submodules:
+- main.py (entry point)
+- crawl.py
+- extract.py
+- github.py
+- compute.py
+- flow.py
+- search.py
 """
 
 import logging
@@ -17,11 +22,11 @@ import click
 
 from spawn.config import config, load_config
 from spawn.crawler import crawl_directory
-from spawn.github import fork_template_portal, configure_static_json
-from spawn.globus_compute import remote_crawl, register_functions, get_task_result
-from spawn.globus_flow import create_and_run_flow, SPAwnFlow
-from spawn.globus_search import publish_metadata, GlobusSearchClient
-from spawn.metadata import extract_metadata
+from spawn.utils.github import fork_template_portal, configure_static_json
+from spawn.globus.globus_compute import remote_crawl, register_functions, get_task_result
+from spawn.globus.globus_flow import create_and_run_flow, SPAwnFlow
+from spawn.globus.globus_search import publish_metadata, GlobusSearchClient
+from spawn.extractors.metadata import extract_metadata
 
 # Configure logging
 logging.basicConfig(
@@ -189,7 +194,7 @@ def crawl(
 
     # Save metadata to JSON if requested
     if save_json:
-        from spawn.metadata import extract_metadata, save_metadata_to_json
+        from spawn.extractors.metadata import extract_metadata, save_metadata_to_json
         
         logger.info("Saving metadata to JSON files")
         json_count = 0
@@ -669,7 +674,7 @@ def remote_crawl_cmd(
             
             # Save metadata to JSON files if requested
             if save_json:
-                from spawn.metadata import save_metadata_to_json
+                from spawn.extractors.metadata import save_metadata_to_json
                 
                 logger.info("Saving metadata to JSON files")
                 json_count = 0
@@ -689,7 +694,7 @@ def remote_crawl_cmd(
                 logger.info(f"Publishing metadata to Globus Search index: {search_index}")
                 
                 # Convert metadata to GMetaEntries
-                from spawn.globus_search import metadata_to_gmeta_entry
+                from spawn.globus.globus_search import metadata_to_gmeta_entry
                 
                 entries = []
                 for metadata in result:

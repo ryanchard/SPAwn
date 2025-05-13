@@ -6,9 +6,14 @@ configuration settings for the SPAwn tool.
 """
 
 import os
-import yaml
 from pathlib import Path
-from typing import Any, Dict, Optional, Union, List
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Union
+
+import yaml
 
 
 class Config:
@@ -29,7 +34,7 @@ class Config:
         """
         self.config_data: Dict[str, Any] = {}
         self.config_path = Path(config_path) if config_path else None
-        
+
         # Load configuration
         if self.config_path:
             self._load_config(self.config_path)
@@ -132,82 +137,92 @@ class Config:
     def crawler_plugins(self) -> Dict[str, Dict[str, Any]]:
         """Get the crawler plugins configuration."""
         return self.get("crawler", {}).get("plugins", {})
-    
+
     @property
     def crawler_polling_rate(self) -> float:
         """
         Get the crawler polling rate in seconds.
-        
+
         This controls how quickly the crawler processes files to avoid
         putting too much load on the filesystem.
         """
         return self.get("crawler", {}).get("polling_rate", 0.0)
-    
+
     @property
     def crawler_exclude_regex(self) -> List[str]:
         """Get the regex patterns to exclude from crawling."""
         return self.get("crawler", {}).get("exclude_regex", [])
-    
+
     @property
     def crawler_include_regex(self) -> List[str]:
         """Get the regex patterns to include in crawling."""
         return self.get("crawler", {}).get("include_regex", [])
-    
+
     @property
     def crawler_ignore_dot_dirs(self) -> bool:
         """Get whether to ignore directories starting with a dot."""
         return self.get("crawler", {}).get("ignore_dot_dirs", True)
-    
+
     @property
     def metadata_json_dir(self) -> Optional[Path]:
         """Get the directory to save metadata JSON files in."""
         json_dir = self.get("metadata", {}).get("json_dir")
         return Path(json_dir).expanduser().absolute() if json_dir else None
-    
+
     @property
     def save_metadata_json(self) -> bool:
         """Get whether to save metadata as JSON files."""
         return self.get("metadata", {}).get("save_json", False)
-    
+
     @property
     def github_token(self) -> Optional[str]:
         """Get the GitHub personal access token."""
         return self.get("github", {}).get("token") or os.environ.get("GITHUB_TOKEN")
-    
+
     @property
     def github_username(self) -> Optional[str]:
         """Get the GitHub username."""
-        return self.get("github", {}).get("username") or os.environ.get("GITHUB_USERNAME")
-    
+        return self.get("github", {}).get("username") or os.environ.get(
+            "GITHUB_USERNAME"
+        )
+
     @property
     def globus_search_index(self) -> Optional[str]:
         """Get the Globus Search index UUID."""
-        return self.get("globus", {}).get("search_index") or os.environ.get("GLOBUS_SEARCH_INDEX")
-    
+        return self.get("globus", {}).get("search_index") or os.environ.get(
+            "GLOBUS_SEARCH_INDEX"
+        )
+
     @property
     def globus_search_visible_to(self) -> List[str]:
         """Get the list of Globus Auth identities that can see entries."""
         return self.get("globus", {}).get("visible_to", ["public"])
-    
+
     @property
     def globus_compute_endpoint_id(self) -> Optional[str]:
         """Get the Globus Compute endpoint ID."""
-        return self.get("globus", {}).get("compute_endpoint_id") or os.environ.get("GLOBUS_COMPUTE_ENDPOINT_ID")
-    
+        return self.get("globus", {}).get("compute_endpoint_id") or os.environ.get(
+            "GLOBUS_COMPUTE_ENDPOINT_ID"
+        )
+
     @property
     def globus_flow_id(self) -> Optional[str]:
         """Get the Globus Flow ID."""
         return self.get("globus", {}).get("flow_id") or os.environ.get("GLOBUS_FLOW_ID")
-    
+
     @property
     def globus_client_id(self) -> Optional[str]:
         """Get the Globus Auth client ID."""
-        return self.get("globus", {}).get("client_id") or os.environ.get("GLOBUS_CLIENT_ID")
-    
+        return self.get("globus", {}).get("client_id") or os.environ.get(
+            "GLOBUS_CLIENT_ID"
+        )
+
     @property
     def globus_client_secret(self) -> Optional[str]:
         """Get the Globus Auth client secret."""
-        return self.get("globus", {}).get("client_secret") or os.environ.get("GLOBUS_CLIENT_SECRET")
+        return self.get("globus", {}).get("client_secret") or os.environ.get(
+            "GLOBUS_CLIENT_SECRET"
+        )
 
     @property
     def portal_config(self) -> Dict[str, Any]:
