@@ -123,6 +123,53 @@ class GitHubClient:
         
         return fork_info
     
+    def configure_pages_and_actions(
+        self,
+        repo_owner: str,
+        repo_name: str,
+        branch: str = "gh-pages",
+        pages_path: str = "/",
+    ) -> None:
+        """
+        Configure GitHub Actions permissions and enable GitHub Pages deployment.
+
+        Args:
+            repo_owner: Owner of the repository.
+            repo_name: Name of the repository.
+            branch: Branch to deploy from (e.g., 'gh-pages').
+            pages_path: Path in the repo to deploy (default is root).
+        """
+        if not self.token:
+            raise ValueError("GitHub token is required to configure repo")
+
+        headers = self._get_headers()
+
+        # Enable Actions with write access
+        actions_url = f"{self.api_url}/repos/{repo_owner}/{repo_name}/actions/permissions"
+        actions_payload = {
+            "enabled": True,
+            "allowed_actions": "all",
+            "default_workflow_permissions": "write",
+        }
+        r1 = requests.put(actions_url, headers=headers, json=actions_payload)
+        if r1.status_code not in [200, 204]:
+            logger.warning(f"Failed to update Actions permissions: {r1.text}")
+
+        # Enable GitHub Pages from branch
+        pages_url = f"{self.api_url}/repos/{repo_owner}/{repo_name}/pages"
+        pages_payload = {
+            "source": {
+                "branch": branch,
+                "path": pages_path,
+            }
+        }
+        r2 = requests.put(pages_url, headers=headers, json=pages_payload)
+        if r2.status_code not in [201, 204]:
+            logger.warning(f"Failed to enable GitHub Pages: {r2.text}")
+        else:
+            logger.info(f"Enabled GitHub Pages for {repo_owner}/{repo_name} from branch {branch}")
+
+
     def clone_repository(
         self,
         repo_owner: str,
