@@ -9,7 +9,7 @@ import click
 import logging
 import sys
 
-from spawn.utils.github import fork_template_portal, configure_static_json
+from spawn.utils.github import fork_template_portal, configure_static_json, GitHubClient
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +25,8 @@ def github() -> None:
 @click.option("--token", help="GitHub personal access token (overrides config and environment)")
 @click.option("--username", help="GitHub username (overrides config and environment)")
 @click.option("--clone-dir", type=click.Path(file_okay=False, path_type=Path), help="Directory to clone the repository into")
+@click.option("--pages-branch", default="gh-pages", help="Branch to deploy GitHub Pages from (default: gh-pages)") # TODO: Ask ryan about this
+@click.option("--pages-path", default="/", help="Path in the repo to deploy for GitHub Pages (default: /)")
 def fork_portal(
     name: str,
     description: Optional[str],
@@ -32,12 +34,19 @@ def fork_portal(
     token: Optional[str],
     username: Optional[str],
     clone_dir: Optional[Path],
+    pages_branch: str,
+    pages_path: str,
 ) -> None:
     """
-    Fork the Globus template search portal.
+    Fork the Globus template search portal and configure GitHub Pages and Actions.
     """
+
+    repo_owner = organization or username or result['repository'].get('owner', {}).get('login')
+    repo_name = name
+    client = GitHubClient(token=token, username=username)
+    
     try:
-        result = fork_template_portal(
+        result = client.fork_template_portal(
             new_name=name,
             description=description,
             organization=organization,
@@ -48,6 +57,19 @@ def fork_portal(
         print(f"Successfully forked repository: {result['repository']['html_url']}")
         if result["clone_path"]:
             print(f"Cloned repository to: {result['clone_path']}")
+
+        # Configure GitHub Pages and Actions
+        try:
+            client.configure_pages_and_actions(
+                repo_owner=repo_owner,
+                repo_name=repo_name,
+                branch=pages_branch,
+                pages_path=pages_path,
+            )
+            print(f"Configured GitHub Pages and Actions for {repo_owner}/{repo_name} (branch: {pages_branch}, path: {pages_path})")
+        except Exception as e:
+            logger.error(f"Error configuring GitHub Pages and Actions: {e}")
+            print(f"Warning: Repository forked, but failed to configure Pages/Actions: {e}")
     except Exception as e:
         logger.error(f"Error forking repository: {e}")
         sys.exit(1)
