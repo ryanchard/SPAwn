@@ -17,6 +17,7 @@ def register_builtin_extractors() -> None:
     # Import and register all extractors
     try:
         from spawn.extractors.text import TextMetadataExtractor
+
         register_extractor(TextMetadataExtractor)
     except ImportError:
         logger.debug("TextMetadataExtractor not available")

@@ -23,7 +23,7 @@ class MetadataExtractor(ABC):
 
     # List of file extensions this extractor can handle
     supported_extensions: List[str] = []
-    
+
     # List of MIME types this extractor can handle
     supported_mime_types: List[str] = []
 
@@ -39,13 +39,18 @@ class MetadataExtractor(ABC):
             True if this extractor can handle the file, False otherwise.
         """
         # Check file extension
-        if cls.supported_extensions and file_path.suffix.lower() in cls.supported_extensions:
+        if (
+            cls.supported_extensions
+            and file_path.suffix.lower() in cls.supported_extensions
+        ):
             return True
 
         # Check MIME type
         if cls.supported_mime_types:
             mime_type, _ = mimetypes.guess_type(str(file_path))
-            if mime_type and any(mime_type.startswith(t) for t in cls.supported_mime_types):
+            if mime_type and any(
+                mime_type.startswith(t) for t in cls.supported_mime_types
+            ):
                 return True
 
         return False
@@ -81,9 +86,9 @@ class BasicMetadataExtractor(MetadataExtractor):
             Dictionary of basic metadata.
         """
         stat = file_path.stat()
-        
+
         mime_type, encoding = mimetypes.guess_type(str(file_path))
-        
+
         return {
             "path": str(file_path),
             "filename": file_path.name,
@@ -137,10 +142,10 @@ def extract_metadata(file_path: Path) -> Dict[str, Any]:
         Dictionary of metadata.
     """
     metadata = {}
-    
+
     # Get extractors for this file
     extractors = get_extractors_for_file(file_path)
-    
+
     # Apply each extractor
     for extractor_class in extractors:
         try:
@@ -148,12 +153,16 @@ def extract_metadata(file_path: Path) -> Dict[str, Any]:
             extracted_data = extractor.extract(file_path)
             metadata.update(extracted_data)
         except Exception as e:
-            logger.error(f"Error extracting metadata with {extractor_class.__name__}: {e}")
-    
+            logger.error(
+                f"Error extracting metadata with {extractor_class.__name__}: {e}"
+            )
+
     return metadata
 
 
-def save_metadata_to_json(metadata: Dict[str, Any], output_dir: Optional[Path] = None) -> Path:
+def save_metadata_to_json(
+    metadata: Dict[str, Any], output_dir: Optional[Path] = None
+) -> Path:
     """
     Save metadata to a JSON file.
 
@@ -170,14 +179,14 @@ def save_metadata_to_json(metadata: Dict[str, Any], output_dir: Optional[Path] =
         output_dir = Path(output_dir).expanduser().absolute()
     else:
         output_dir = Path(output_dir).expanduser().absolute()
-    
+
     # Create output directory if it doesn't exist
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Create JSON filename based on original filename
     json_filename = f"SPAwn_metadata.json"
     json_path = output_dir / json_filename
-    
+
     # Save metadata to JSON file
     print(json_path)
     try:
@@ -193,6 +202,7 @@ def save_metadata_to_json(metadata: Dict[str, Any], output_dir: Optional[Path] =
 # Import and register additional extractors
 try:
     from spawn.extractors import register_builtin_extractors
+
     register_builtin_extractors()
 except ImportError:
     logger.debug("No additional extractors found")

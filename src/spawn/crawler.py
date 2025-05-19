@@ -50,18 +50,22 @@ class Crawler:
         self.root_dir = Path(root_dir).expanduser().absolute()
         self.exclude_patterns = exclude_patterns or []
         self.include_patterns = include_patterns or ["*"]
-        
+
         # Add regex for dot directories if requested
         exclude_regex_list = exclude_regex or []
         if ignore_dot_dirs:
             # Add pattern to exclude directories starting with a dot
             exclude_regex_list.append(r"/\.[^/]*(/|$)")
-        
+
         self.exclude_regex = [re.compile(pattern) for pattern in exclude_regex_list]
-        self.include_regex = [re.compile(pattern) for pattern in (include_regex or [])] or [re.compile(r".*")]
+        self.include_regex = [
+            re.compile(pattern) for pattern in (include_regex or [])
+        ] or [re.compile(r".*")]
         self.max_depth = max_depth
         self.follow_symlinks = follow_symlinks
-        self.polling_rate = polling_rate if polling_rate is not None else config.crawler_polling_rate
+        self.polling_rate = (
+            polling_rate if polling_rate is not None else config.crawler_polling_rate
+        )
         self.visited_dirs: Set[Path] = set()
 
     def crawl(self) -> Generator[Path, None, None]:
@@ -80,10 +84,10 @@ class Crawler:
             return
 
         logger.info(f"Starting crawl of {self.root_dir}")
-        
+
         # Get total number of files for progress bar
         total_files = sum(1 for _ in self.root_dir.rglob("*") if _.is_file())
-        
+
         with tqdm(total=total_files, desc="Crawling") as pbar:
             for path in self._crawl_directory(self.root_dir, depth=0):
                 yield path
@@ -114,16 +118,16 @@ class Crawler:
         try:
             for path in directory.iterdir():
                 path_str = str(path)
-                
+
                 # Apply polling rate if configured
                 if self.polling_rate > 0:
                     time.sleep(self.polling_rate)
-                
+
                 # Skip if excluded by glob patterns
                 if any(path.match(pattern) for pattern in self.exclude_patterns):
                     logger.debug(f"Skipping excluded path (glob): {path}")
                     continue
-                
+
                 # Skip if excluded by regex patterns
                 if any(pattern.search(path_str) for pattern in self.exclude_regex):
                     logger.debug(f"Skipping excluded path (regex): {path}")
@@ -131,9 +135,13 @@ class Crawler:
 
                 if path.is_file():
                     # Check if file matches include patterns (glob or regex)
-                    glob_match = any(path.match(pattern) for pattern in self.include_patterns)
-                    regex_match = any(pattern.search(path_str) for pattern in self.include_regex)
-                    
+                    glob_match = any(
+                        path.match(pattern) for pattern in self.include_patterns
+                    )
+                    regex_match = any(
+                        pattern.search(path_str) for pattern in self.include_regex
+                    )
+
                     if glob_match or regex_match:
                         yield path
                 elif path.is_dir():
@@ -143,13 +151,17 @@ class Crawler:
                     # Follow symlinks if enabled
                     target = path.resolve()
                     target_str = str(target)
-                    
+
                     if target.is_dir() and target not in self.visited_dirs:
                         yield from self._crawl_directory(target, depth + 1)
                     elif target.is_file():
-                        glob_match = any(target.match(pattern) for pattern in self.include_patterns)
-                        regex_match = any(pattern.search(target_str) for pattern in self.include_regex)
-                        
+                        glob_match = any(
+                            target.match(pattern) for pattern in self.include_patterns
+                        )
+                        regex_match = any(
+                            pattern.search(target_str) for pattern in self.include_regex
+                        )
+
                         if glob_match or regex_match:
                             yield target
         except PermissionError:

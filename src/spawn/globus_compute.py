@@ -25,9 +25,12 @@ def _ensure_globus_compute_imports():
         try:
             global globus_compute_sdk
             import globus_compute_sdk
+
             GLOBUS_COMPUTE_IMPORTS = True
         except ImportError:
-            logger.error("Globus Compute SDK not installed. Run 'pip install globus-compute-sdk'")
+            logger.error(
+                "Globus Compute SDK not installed. Run 'pip install globus-compute-sdk'"
+            )
             raise
 
 
@@ -44,9 +47,9 @@ def remote_crawl_directory(
 ) -> List[Dict[str, Any]]:
     """
     Crawl a directory on a remote filesystem and extract metadata.
-    
+
     This function is designed to be registered with Globus Compute.
-    
+
     Args:
         directory_path: Path to the directory to crawl.
         exclude_patterns: Glob patterns to exclude from crawling.
@@ -57,7 +60,7 @@ def remote_crawl_directory(
         follow_symlinks: Whether to follow symbolic links.
         polling_rate: Time in seconds to wait between file operations.
         ignore_dot_dirs: Whether to ignore directories starting with a dot.
-        
+
     Returns:
         List of metadata dictionaries for each file.
     """
@@ -70,19 +73,19 @@ def remote_crawl_directory(
     import re
     import time
     import json
-    
+
     # Add the current directory to the path to import spawn modules
     current_dir = os.path.dirname(os.path.abspath(__file__))
     if current_dir not in sys.path:
         sys.path.append(current_dir)
-    
+
     # Import spawn modules
     from spawn.crawler import crawl_directory
     from spawn.metadata import extract_metadata
-    
+
     # Convert directory path to Path object
     directory = Path(directory_path)
-    
+
     # Crawl directory
     files = crawl_directory(
         directory,
@@ -95,44 +98,44 @@ def remote_crawl_directory(
         polling_rate=polling_rate,
         ignore_dot_dirs=ignore_dot_dirs,
     )
-    
+
     # Extract metadata
     metadata_list = []
     for file_path in files:
         try:
             metadata = extract_metadata(file_path)
-            
+
             # Convert Path objects to strings for JSON serialization
             metadata["path"] = str(metadata["path"])
-            
+
             # Add file_path as string
             metadata["file_path"] = str(file_path)
-            
+
             metadata_list.append(metadata)
         except Exception as e:
             print(f"Error extracting metadata for {file_path}: {e}")
-    
+
     return metadata_list
 
 
 def register_functions(endpoint_id: str) -> Dict[str, str]:
     """
     Register functions with Globus Compute.
-    
+
     Args:
         endpoint_id: Globus Compute endpoint ID.
-        
+
     Returns:
         Dictionary mapping function names to function IDs.
     """
     _ensure_globus_compute_imports()
-    
+
     # Create Globus Compute client
     gc = globus_compute_sdk.Client()
-    
+
     # Register functions
     function_ids = {}
-    
+
     # Register remote_crawl_directory
     remote_crawl_directory_id = gc.register_function(
         remote_crawl_directory,
@@ -141,7 +144,7 @@ def register_functions(endpoint_id: str) -> Dict[str, str]:
         public=False,
     )
     function_ids["remote_crawl_directory"] = remote_crawl_directory_id
-    
+
     return function_ids
 
 
@@ -161,7 +164,7 @@ def remote_crawl(
 ) -> Union[str, List[Dict[str, Any]]]:
     """
     Crawl a directory on a remote filesystem using Globus Compute.
-    
+
     Args:
         endpoint_id: Globus Compute endpoint ID.
         directory_path: Path to the directory to crawl.
@@ -175,22 +178,22 @@ def remote_crawl(
         ignore_dot_dirs: Whether to ignore directories starting with a dot.
         wait: Whether to wait for the task to complete.
         timeout: Timeout in seconds for waiting for the task to complete.
-        
+
     Returns:
         If wait is True, returns the list of metadata dictionaries.
         If wait is False, returns the task ID.
     """
     _ensure_globus_compute_imports()
-    
+
     # Create Globus Compute client
     gc = globus_compute_sdk.Client()
-    
+
     # Register functions if needed
     function_ids = register_functions(endpoint_id)
-    
+
     # Get function ID
     function_id = function_ids["remote_crawl_directory"]
-    
+
     # Submit task
     task = gc.run(
         function_id=function_id,
@@ -207,44 +210,44 @@ def remote_crawl(
             "ignore_dot_dirs": ignore_dot_dirs,
         },
     )
-    
+
     logger.info(f"Submitted task {task.task_id} to endpoint {endpoint_id}")
-    
+
     if not wait:
         return task.task_id
-    
+
     # Wait for task to complete
     logger.info(f"Waiting for task {task.task_id} to complete...")
     result = task.result(timeout=timeout)
-    
+
     logger.info(f"Task {task.task_id} completed with {len(result)} files processed")
-    
+
     return result
 
 
 def get_task_result(task_id: str, timeout: int = 3600) -> Any:
     """
     Get the result of a Globus Compute task.
-    
+
     Args:
         task_id: Globus Compute task ID.
         timeout: Timeout in seconds for waiting for the task to complete.
-        
+
     Returns:
         The result of the task.
     """
     _ensure_globus_compute_imports()
-    
+
     # Create Globus Compute client
     gc = globus_compute_sdk.Client()
-    
+
     # Get task
     task = gc.get_task(task_id)
-    
+
     # Wait for task to complete
     logger.info(f"Waiting for task {task_id} to complete...")
     result = task.result(timeout=timeout)
-    
+
     logger.info(f"Task {task_id} completed")
-    
+
     return result

@@ -42,7 +42,9 @@ class ElasticsearchIndexer:
         self.host = host or config.elasticsearch_host
         self.index_name = index_name or config.elasticsearch_index
         self.batch_size = batch_size
-        self.save_json = save_json if save_json is not None else config.save_metadata_json
+        self.save_json = (
+            save_json if save_json is not None else config.save_metadata_json
+        )
         self.json_dir = json_dir or config.metadata_json_dir
         self.es = None
 
@@ -90,7 +92,8 @@ class ElasticsearchIndexer:
                     "number_of_shards": 1,
                     "number_of_replicas": 0,
                 },
-                "mappings": mappings or {
+                "mappings": mappings
+                or {
                     "properties": {
                         "path": {"type": "keyword"},
                         "filename": {"type": "keyword"},
@@ -135,18 +138,20 @@ class ElasticsearchIndexer:
         try:
             # Extract metadata
             metadata = extract_metadata(file_path)
-            
+
             # Save metadata to JSON if enabled
             if self.save_json:
                 try:
-                    json_path = save_metadata_to_json(file_path, metadata, self.json_dir)
+                    json_path = save_metadata_to_json(
+                        file_path, metadata, self.json_dir
+                    )
                     logger.debug(f"Saved metadata to JSON: {json_path}")
                 except Exception as e:
                     logger.error(f"Error saving metadata to JSON for {file_path}: {e}")
-            
+
             # Add document ID
             doc_id = str(file_path)
-            
+
             # Index document
             self.es.index(index=self.index_name, id=doc_id, document=metadata)
             logger.debug(f"Indexed file: {file_path}")
@@ -176,51 +181,59 @@ class ElasticsearchIndexer:
         # Prepare for batch indexing
         success_count = 0
         failed_count = 0
-        
+
         # Process files in batches
         with tqdm(total=len(file_paths), desc="Indexing") as pbar:
             batch = []
-            
+
             for file_path in file_paths:
                 try:
                     # Extract metadata
                     metadata = extract_metadata(file_path)
-                    
+
                     # Save metadata to JSON if enabled
                     if self.save_json:
                         try:
-                            json_path = save_metadata_to_json(file_path, metadata, self.json_dir)
+                            json_path = save_metadata_to_json(
+                                file_path, metadata, self.json_dir
+                            )
                             logger.debug(f"Saved metadata to JSON: {json_path}")
                         except Exception as e:
-                            logger.error(f"Error saving metadata to JSON for {file_path}: {e}")
-                    
+                            logger.error(
+                                f"Error saving metadata to JSON for {file_path}: {e}"
+                            )
+
                     # Add to batch
-                    batch.append({
-                        "_index": self.index_name,
-                        "_id": str(file_path),
-                        "_source": metadata,
-                    })
-                    
+                    batch.append(
+                        {
+                            "_index": self.index_name,
+                            "_id": str(file_path),
+                            "_source": metadata,
+                        }
+                    )
+
                     # Process batch if it reaches batch size
                     if len(batch) >= self.batch_size:
                         success, failed = self._process_batch(batch)
                         success_count += success
                         failed_count += failed
                         batch = []
-                        
+
                     pbar.update(1)
                 except Exception as e:
                     logger.error(f"Error preparing file {file_path} for indexing: {e}")
                     failed_count += 1
                     pbar.update(1)
-            
+
             # Process remaining batch
             if batch:
                 success, failed = self._process_batch(batch)
                 success_count += success
                 failed_count += failed
-        
-        logger.info(f"Indexed {success_count} files, failed to index {failed_count} files")
+
+        logger.info(
+            f"Indexed {success_count} files, failed to index {failed_count} files"
+        )
         return {"success": success_count, "failed": failed_count}
 
     def _process_batch(self, batch: List[Dict[str, Any]]) -> tuple[int, int]:
@@ -269,13 +282,15 @@ class ElasticsearchIndexer:
         try:
             # Get index stats
             stats = self.es.indices.stats(index=self.index_name)
-            
+
             # Get count
             count = self.es.count(index=self.index_name)
-            
+
             return {
                 "doc_count": count["count"],
-                "index_size_bytes": stats["indices"][self.index_name]["total"]["store"]["size_in_bytes"],
+                "index_size_bytes": stats["indices"][self.index_name]["total"]["store"][
+                    "size_in_bytes"
+                ],
                 "index_name": self.index_name,
             }
         except Exception as e:

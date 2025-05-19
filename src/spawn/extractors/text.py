@@ -17,7 +17,18 @@ logger = logging.getLogger(__name__)
 class TextMetadataExtractor(MetadataExtractor):
     """Extract metadata from text files."""
 
-    supported_extensions = [".txt", ".md", ".rst", ".csv", ".json", ".xml", ".html", ".htm", ".yaml", ".yml"]
+    supported_extensions = [
+        ".txt",
+        ".md",
+        ".rst",
+        ".csv",
+        ".json",
+        ".xml",
+        ".html",
+        ".htm",
+        ".yaml",
+        ".yml",
+    ]
     supported_mime_types = ["text/"]
 
     def __init__(self, max_content_length: int = 10000):
@@ -45,22 +56,24 @@ class TextMetadataExtractor(MetadataExtractor):
             # Read file content
             with open(file_path, "r", encoding="utf-8", errors="replace") as f:
                 content = f.read(self.max_content_length)
-            
+
             # Extract basic text metadata
-            metadata["content_preview"] = content[:1000] if len(content) > 1000 else content
+            metadata["content_preview"] = (
+                content[:1000] if len(content) > 1000 else content
+            )
             metadata["line_count"] = content.count("\n") + 1
             metadata["word_count"] = len(re.findall(r"\b\w+\b", content))
             metadata["char_count"] = len(content)
-            
+
             # Try to detect language (simple heuristic)
             metadata["language"] = self._detect_language(content)
-            
+
             # Extract keywords (simple implementation)
             metadata["keywords"] = self._extract_keywords(content)
-            
+
         except Exception as e:
             logger.error(f"Error extracting text metadata from {file_path}: {e}")
-        
+
         return metadata
 
     def _detect_language(self, content: str) -> str:
@@ -75,17 +88,29 @@ class TextMetadataExtractor(MetadataExtractor):
         """
         # This is a very simple heuristic and should be replaced with a proper language detection library
         # like langdetect or fasttext in a production environment
-        
+
         # Count common words in different languages
         english_words = ["the", "and", "is", "in", "to", "of", "that", "for"]
         spanish_words = ["el", "la", "es", "en", "y", "de", "que", "por"]
         french_words = ["le", "la", "est", "en", "et", "de", "que", "pour"]
-        
+
         # Count occurrences
-        english_count = sum(1 for word in re.findall(r"\b\w+\b", content.lower()) if word in english_words)
-        spanish_count = sum(1 for word in re.findall(r"\b\w+\b", content.lower()) if word in spanish_words)
-        french_count = sum(1 for word in re.findall(r"\b\w+\b", content.lower()) if word in french_words)
-        
+        english_count = sum(
+            1
+            for word in re.findall(r"\b\w+\b", content.lower())
+            if word in english_words
+        )
+        spanish_count = sum(
+            1
+            for word in re.findall(r"\b\w+\b", content.lower())
+            if word in spanish_words
+        )
+        french_count = sum(
+            1
+            for word in re.findall(r"\b\w+\b", content.lower())
+            if word in french_words
+        )
+
         # Determine language
         if english_count > spanish_count and english_count > french_count:
             return "en"
@@ -109,21 +134,35 @@ class TextMetadataExtractor(MetadataExtractor):
         """
         # This is a simple implementation and should be replaced with a proper keyword extraction
         # algorithm in a production environment
-        
+
         # Remove common stop words
-        stop_words = {"the", "and", "is", "in", "to", "of", "that", "for", "on", "with", "as", "this", "by"}
-        
+        stop_words = {
+            "the",
+            "and",
+            "is",
+            "in",
+            "to",
+            "of",
+            "that",
+            "for",
+            "on",
+            "with",
+            "as",
+            "this",
+            "by",
+        }
+
         # Extract words
         words = re.findall(r"\b\w{3,}\b", content.lower())
-        
+
         # Count word frequencies
         word_counts = {}
         for word in words:
             if word not in stop_words:
                 word_counts[word] = word_counts.get(word, 0) + 1
-        
+
         # Sort by frequency
         sorted_words = sorted(word_counts.items(), key=lambda x: x[1], reverse=True)
-        
+
         # Return top keywords
         return [word for word, count in sorted_words[:max_keywords]]

@@ -25,9 +25,12 @@ def _ensure_globus_flow_imports():
         try:
             global globus_automate_client
             import globus_automate_client
+
             GLOBUS_FLOW_IMPORTS = True
         except ImportError:
-            logger.error("Globus Automate Client not installed. Run 'pip install globus-automate-client'")
+            logger.error(
+                "Globus Automate Client not installed. Run 'pip install globus-automate-client'"
+            )
             raise
 
 
@@ -42,85 +45,82 @@ class SPAwnFlow:
             "properties": {
                 "compute_endpoint_id": {
                     "type": "string",
-                    "description": "Globus Compute endpoint ID"
+                    "description": "Globus Compute endpoint ID",
                 },
                 "directory_path": {
                     "type": "string",
-                    "description": "Path to the directory to crawl"
+                    "description": "Path to the directory to crawl",
                 },
                 "search_index": {
                     "type": "string",
-                    "description": "Globus Search index UUID"
+                    "description": "Globus Search index UUID",
                 },
                 "portal_name": {
                     "type": "string",
-                    "description": "Name for the portal repository"
+                    "description": "Name for the portal repository",
                 },
                 "portal_title": {
                     "type": "string",
-                    "description": "Title for the portal"
+                    "description": "Title for the portal",
                 },
                 "portal_subtitle": {
                     "type": "string",
-                    "description": "Subtitle for the portal"
+                    "description": "Subtitle for the portal",
                 },
                 "github_token": {
                     "type": "string",
-                    "description": "GitHub personal access token"
+                    "description": "GitHub personal access token",
                 },
-                "github_username": {
-                    "type": "string",
-                    "description": "GitHub username"
-                },
+                "github_username": {"type": "string", "description": "GitHub username"},
                 "exclude_patterns": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Glob patterns to exclude from crawling"
+                    "description": "Glob patterns to exclude from crawling",
                 },
                 "include_patterns": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Glob patterns to include in crawling"
+                    "description": "Glob patterns to include in crawling",
                 },
                 "exclude_regex": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Regex patterns to exclude from crawling"
+                    "description": "Regex patterns to exclude from crawling",
                 },
                 "include_regex": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Regex patterns to include in crawling"
+                    "description": "Regex patterns to include in crawling",
                 },
                 "max_depth": {
                     "type": "integer",
-                    "description": "Maximum depth to crawl"
+                    "description": "Maximum depth to crawl",
                 },
                 "follow_symlinks": {
                     "type": "boolean",
-                    "description": "Whether to follow symbolic links"
+                    "description": "Whether to follow symbolic links",
                 },
                 "polling_rate": {
                     "type": "number",
-                    "description": "Time in seconds to wait between file operations"
+                    "description": "Time in seconds to wait between file operations",
                 },
                 "ignore_dot_dirs": {
                     "type": "boolean",
-                    "description": "Whether to ignore directories starting with a dot"
+                    "description": "Whether to ignore directories starting with a dot",
                 },
                 "visible_to": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Globus Auth identities that can see entries"
-                }
+                    "description": "Globus Auth identities that can see entries",
+                },
             },
             "required": [
                 "compute_endpoint_id",
                 "directory_path",
                 "search_index",
                 "portal_name",
-                "portal_title"
-            ]
+                "portal_title",
+            ],
         },
         "definition": {
             "StartAt": "CrawlDirectory",
@@ -140,11 +140,11 @@ class SPAwnFlow:
                             "max_depth.$": "$.max_depth",
                             "follow_symlinks.$": "$.follow_symlinks",
                             "polling_rate.$": "$.polling_rate",
-                            "ignore_dot_dirs.$": "$.ignore_dot_dirs"
-                        }
+                            "ignore_dot_dirs.$": "$.ignore_dot_dirs",
+                        },
                     },
                     "ResultPath": "$.crawl_result",
-                    "Next": "PublishToSearch"
+                    "Next": "PublishToSearch",
                 },
                 "PublishToSearch": {
                     "Type": "Action",
@@ -152,10 +152,10 @@ class SPAwnFlow:
                     "Parameters": {
                         "search_index.$": "$.search_index",
                         "visible_to.$": "$.visible_to",
-                        "entries.$": "$.crawl_result.details.result"
+                        "entries.$": "$.crawl_result.details.result",
                     },
                     "ResultPath": "$.search_result",
-                    "Next": "CreatePortal"
+                    "Next": "CreatePortal",
                 },
                 "CreatePortal": {
                     "Type": "Action",
@@ -165,10 +165,10 @@ class SPAwnFlow:
                         "repo_name": "template-search-portal",
                         "new_name.$": "$.portal_name",
                         "token.$": "$.github_token",
-                        "username.$": "$.github_username"
+                        "username.$": "$.github_username",
                     },
                     "ResultPath": "$.fork_result",
-                    "Next": "ConfigurePortal"
+                    "Next": "ConfigurePortal",
                 },
                 "ConfigurePortal": {
                     "Type": "Action",
@@ -180,21 +180,21 @@ class SPAwnFlow:
                         "content": {
                             "index": {
                                 "uuid.$": "$.search_index",
-                                "name.$": "$.search_index"
+                                "name.$": "$.search_index",
                             },
                             "branding": {
                                 "title.$": "$.portal_title",
-                                "subtitle.$": "$.portal_subtitle"
-                            }
+                                "subtitle.$": "$.portal_subtitle",
+                            },
                         },
                         "message": "Configure portal",
-                        "token.$": "$.github_token"
+                        "token.$": "$.github_token",
                     },
                     "ResultPath": "$.configure_result",
-                    "End": True
-                }
-            }
-        }
+                    "End": True,
+                },
+            },
+        },
     }
 
     def __init__(
