@@ -26,6 +26,8 @@ def remote_crawl_directory(
     follow_symlinks: bool = False,
     polling_rate: Optional[float] = None,
     ignore_dot_dirs: bool = True,
+    save_json: bool = False,
+    json_dir: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """
     Crawl a directory on a remote filesystem and extract metadata.
@@ -63,7 +65,7 @@ def remote_crawl_directory(
 
     # Import spawn modules
     from spawn.crawler import crawl_directory
-    from spawn.metadata import extract_metadata
+    from spawn.metadata import extract_metadata, save_metadata_to_json
 
     # Convert directory path to Path object
     directory = Path(directory_path)
@@ -83,6 +85,8 @@ def remote_crawl_directory(
     
     # Extract metadata
     metadata_list = []
+    metadata_dict = {}
+    
     for file_path in files:
         try:
             metadata = extract_metadata(file_path)
@@ -94,8 +98,18 @@ def remote_crawl_directory(
             metadata["file_path"] = str(file_path)
 
             metadata_list.append(metadata)
+            metadata_dict[str(file_path.absolute())] = metadata
         except Exception as e:
             print(f"Error extracting metadata for {file_path}: {e}")
+    
+    # Save metadata to JSON if requested
+    if save_json and json_dir:
+        try:
+            json_dir_path = Path(json_dir)
+            save_metadata_to_json(metadata_dict, json_dir_path)
+            print(f"Saved metadata for {len(metadata_dict)} files to JSON in {json_dir}")
+        except Exception as e:
+            print(f"Error saving metadata to JSON: {e}")
 
     return metadata_list
 
@@ -141,6 +155,8 @@ def remote_crawl(
     ignore_dot_dirs: bool = True,
     wait: bool = True,
     timeout: int = 3600,
+    save_json: bool = False,
+    json_dir: Optional[Path] = None,
 ) -> Union[str, List[Dict[str, Any]]]:
     """
     Crawl a directory on a remote filesystem using Globus Compute.
@@ -166,6 +182,9 @@ def remote_crawl(
     # Create Globus Compute client
     gce = Executor(endpoint_id=endpoint_id)
 
+    # Convert json_dir to string if provided
+    json_dir_str = str(json_dir) if json_dir else None
+    
     # Submit task
     task = gce.submit(
         remote_crawl_directory,
@@ -178,6 +197,8 @@ def remote_crawl(
         follow_symlinks=follow_symlinks,
         polling_rate=polling_rate,
         ignore_dot_dirs=ignore_dot_dirs,
+        save_json=save_json,
+        json_dir=json_dir_str,
     )
 
     logger.info(f"Submitted task {task.task_id} to endpoint {endpoint_id}")
