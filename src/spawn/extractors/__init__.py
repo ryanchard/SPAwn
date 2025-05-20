@@ -45,3 +45,21 @@ def register_builtin_extractors() -> None:
         register_extractor(PDFMetadataExtractor)
     except ImportError:
         logger.debug("PDFMetadataExtractor not available")
+        
+    try:
+        from spawn.extractors.python import PythonMetadataExtractor
+        register_extractor(PythonMetadataExtractor)
+    except ImportError:
+        logger.debug("PythonMetadataExtractor not available")
+
+    # try:
+    #     from spawn.extractors.audio import AudioMetadataExtractor
+    #     register_extractor(AudioMetadataExtractor)
+    # except ImportError:
+    #     logger.debug("AudioMetadataExtractor not available")
+
+    # try:
+    #     from spawn.extractors.video import VideoMetadataExtractor
+    #     register_extractor(VideoMetadataExtractor)
+    # except ImportError:
+    #     logger.debug("VideoMetadataExtractor not available")
