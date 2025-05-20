@@ -9,8 +9,11 @@ To use the Globus Search integration features, you need:
 1. A Globus account
 2. A Globus Search index
    - You can create a search index through the [Globus Search Console](https://app.globus.org/search)
+   - Or use the SPAwn CLI command: `spawn search create-index --display-name "My Index"`
    - Note the UUID of your search index
-3. A Globus Auth token with the `search.ingest` scope
+3. A Globus Auth token with the appropriate scopes:
+   - `search.ingest` scope for publishing metadata
+   - `search.create_index` scope for creating indexes
    - You can obtain a token using the [Globus CLI](https://docs.globus.org/cli/) or the [Globus SDK](https://globus-sdk-python.readthedocs.io/)
 
 ## Configuration
@@ -126,17 +129,21 @@ See the [GitHub Integration](github_integration.md) documentation for more detai
 
 ## Example Workflow
 
-Here's a complete workflow for crawling a directory, publishing metadata to Globus Search, and creating a web interface:
+Here's a complete workflow for creating a search index, crawling a directory, publishing metadata to Globus Search, and creating a web interface:
 
 ```bash
-# Crawl a directory and publish metadata to Globus Search
-spawn crawl /path/to/data --search-index "your-search-index-uuid" --save-json
+# Create a new Globus Search index
+spawn search create-index --display-name "My Research Data Index" --description "Index for my research data"
+# Note the index UUID from the output (e.g., "1234abcd-5678-efgh-9012-ijklmnopqrst")
+
+# Crawl a directory and publish metadata to the new index
+spawn crawl /path/to/data --search-index "1234abcd-5678-efgh-9012-ijklmnopqrst" --save-json
 
 # Create a new portal repository
 spawn github fork-portal --name "my-search-portal" --clone-dir ./portal
 
 # Configure the portal with your Globus Search index
-spawn github configure-portal ./portal --index-name "your-search-index-uuid" --title "My Search Portal" --subtitle "Search and discover data"
+spawn github configure-portal ./portal --index-name "1234abcd-5678-efgh-9012-ijklmnopqrst" --title "My Research Data Portal" --subtitle "Search and discover research data"
 
 # Push changes to GitHub
 cd ./portal
@@ -154,3 +161,22 @@ For advanced configuration of the Globus Search integration, you can modify the 
 - `batch_size`: The number of entries to ingest in a single batch
 
 These settings can be configured in the configuration file or passed directly to the CLI commands.
+
+## Creating a Globus Search Index
+
+SPAwn provides a command to create a new Globus Search index programmatically:
+
+```bash
+# Create a basic search index
+spawn search create-index --display-name "My Data Index"
+
+# Create an index with a description
+spawn search create-index --display-name "My Data Index" --description "Index for my research data"
+
+# Create an index with specific visibility
+spawn search create-index --display-name "My Data Index" --visible-to "public" --visible-to "urn:globus:groups:id:your-group-id"
+```
+
+The command will output the UUID of the newly created index, which you can use in your configuration or with the `--search-index` option in other commands.
+
+This command requires a Globus Auth token with the `search.create_index` scope. The authentication process will be handled automatically through the Globus SDK.
