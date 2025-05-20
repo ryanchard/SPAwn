@@ -82,11 +82,11 @@ def remote_crawl_directory(
         polling_rate=polling_rate,
         ignore_dot_dirs=ignore_dot_dirs,
     )
-    
+
     # Extract metadata
     metadata_list = []
     metadata_dict = {}
-    
+
     for file_path in files:
         try:
             metadata = extract_metadata(file_path)
@@ -101,13 +101,15 @@ def remote_crawl_directory(
             metadata_dict[str(file_path.absolute())] = metadata
         except Exception as e:
             print(f"Error extracting metadata for {file_path}: {e}")
-    
+
     # Save metadata to JSON if requested
     if save_json and json_dir:
         try:
             json_dir_path = Path(json_dir)
             save_metadata_to_json(metadata_dict, json_dir_path)
-            print(f"Saved metadata for {len(metadata_dict)} files to JSON in {json_dir}")
+            print(
+                f"Saved metadata for {len(metadata_dict)} files to JSON in {json_dir}"
+            )
         except Exception as e:
             print(f"Error saving metadata to JSON: {e}")
 
@@ -184,7 +186,7 @@ def remote_crawl(
 
     # Convert json_dir to string if provided
     json_dir_str = str(json_dir) if json_dir else None
-    
+
     # Submit task
     task = gce.submit(
         remote_crawl_directory,

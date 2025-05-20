@@ -163,7 +163,7 @@ def extract_metadata(file_path: Path) -> Dict[str, Any]:
 def save_metadata_to_json(
     file_path_or_metadata: Union[Path, Dict[str, Any]],
     metadata: Optional[Dict[str, Any]] = None,
-    output_dir: Optional[Path] = None
+    output_dir: Optional[Path] = None,
 ) -> Path:
     """
     Save metadata to a JSON file.
@@ -196,11 +196,13 @@ def save_metadata_to_json(
         metadata_dict = file_path_or_metadata
         json_filename = "SPAwn_metadata.json"
         json_path = output_dir / json_filename
-        
+
         try:
             with open(json_path, "w") as f:
                 json.dump(metadata_dict, f, indent=2, default=str)
-            logger.debug(f"Saved metadata for {len(metadata_dict)} files to {json_path}")
+            logger.debug(
+                f"Saved metadata for {len(metadata_dict)} files to {json_path}"
+            )
             return json_path
         except Exception as e:
             logger.error(f"Error saving metadata to {json_path}: {e}")
@@ -210,11 +212,11 @@ def save_metadata_to_json(
         file_path = file_path_or_metadata
         if not isinstance(file_path, Path):
             file_path = Path(file_path)
-            
+
         # Create JSON filename based on original filename
         json_filename = f"{file_path.stem}_metadata.json"
         json_path = output_dir / json_filename
-        
+
         try:
             with open(json_path, "w") as f:
                 json.dump(metadata, f, indent=2, default=str)

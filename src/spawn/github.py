@@ -286,12 +286,7 @@ class GitHubClient:
         url = f"{self.api_url}/repos/{repo_owner}/{repo_name}/pages"
 
         # Prepare request data
-        data = {
-            "source": {
-                "branch": branch,
-                "path": path
-            }
-        }
+        data = {"source": {"branch": branch, "path": path}}
 
         # Enable GitHub Pages
         response = requests.post(url, headers=self._get_headers(), json=data)
@@ -340,10 +335,7 @@ class GitHubClient:
         url = f"{self.api_url}/repos/{repo_owner}/{repo_name}/actions/permissions"
 
         # Prepare request data to enable actions
-        data = {
-            "enabled": True,
-            "allowed_actions": "all"
-        }
+        data = {"enabled": True, "allowed_actions": "all"}
 
         # Enable GitHub Actions
         response = requests.put(url, headers=self._get_headers(), json=data)
@@ -357,10 +349,12 @@ class GitHubClient:
         workflow_url = f"{self.api_url}/repos/{repo_owner}/{repo_name}/actions/permissions/workflow"
         workflow_data = {
             "default_workflow_permissions": "write",
-            "can_approve_pull_request_reviews": True
+            "can_approve_pull_request_reviews": True,
         }
 
-        response = requests.put(workflow_url, headers=self._get_headers(), json=workflow_data)
+        response = requests.put(
+            workflow_url, headers=self._get_headers(), json=workflow_data
+        )
 
         if response.status_code != 204:
             logger.warning(

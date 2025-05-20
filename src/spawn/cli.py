@@ -502,7 +502,9 @@ def configure_portal(
 
     try:
         # Validate parameters
-        if (push or enable_pages or enable_actions) and (not repo_owner or not repo_name):
+        if (push or enable_pages or enable_actions) and (
+            not repo_owner or not repo_name
+        ):
             logger.error(
                 "--repo-owner and --repo-name are required when --push, --enable-pages, or --enable-actions is used"
             )
@@ -551,7 +553,9 @@ def configure_portal(
                 repo_name=repo_name,
             )
             print(f"Successfully enabled GitHub Actions for {repo_owner}/{repo_name}")
-            print(f"GitHub Actions workflows can now automatically publish to GitHub Pages")
+            print(
+                f"GitHub Actions workflows can now automatically publish to GitHub Pages"
+            )
 
     except Exception as e:
         logger.error(f"Error configuring portal: {e}")
@@ -723,7 +727,9 @@ def remote_crawl_cmd(
             # If save_json was true, the metadata was already saved on the remote endpoint
             # We don't need to save it again here
             if save_json:
-                logger.info(f"Metadata was saved to JSON directory on the remote endpoint")
+                logger.info(
+                    f"Metadata was saved to JSON directory on the remote endpoint"
+                )
 
             # Publish metadata to Globus Search if requested
             if search_index:
