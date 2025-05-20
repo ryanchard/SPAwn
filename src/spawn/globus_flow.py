@@ -12,26 +12,11 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-# Import these only when needed to avoid dependency issues
-GLOBUS_FLOW_IMPORTS = False
+import globus_sdk
+
+from globus_sdk import UserApp, FlowsClient
 
 logger = logging.getLogger(__name__)
-
-
-def _ensure_globus_flow_imports():
-    """Ensure Globus Flow imports are available."""
-    global GLOBUS_FLOW_IMPORTS
-    if not GLOBUS_FLOW_IMPORTS:
-        try:
-            global globus_automate_client
-            import globus_automate_client
-
-            GLOBUS_FLOW_IMPORTS = True
-        except ImportError:
-            logger.error(
-                "Globus Automate Client not installed. Run 'pip install globus-automate-client'"
-            )
-            raise
 
 
 class SPAwnFlow:
@@ -130,7 +115,7 @@ class SPAwnFlow:
                     "ActionUrl": "https://compute.actions.globus.org",
                     "Parameters": {
                         "endpoint.$": "$.compute_endpoint_id",
-                        "function.$": "$.compute_function_id",
+                        "function.$": "$.compute_crawl_function_id",
                         "kwargs": {
                             "directory_path.$": "$.directory_path",
                             "exclude_patterns.$": "$.exclude_patterns",
@@ -148,86 +133,59 @@ class SPAwnFlow:
                 },
                 "PublishToSearch": {
                     "Type": "Action",
-                    "ActionUrl": "https://actions.globus.org/search/ingest",
+                    "ActionUrl": "https://compute.actions.globus.org",
                     "Parameters": {
-                        "search_index.$": "$.search_index",
-                        "visible_to.$": "$.visible_to",
-                        "entries.$": "$.crawl_result.details.result",
+                        "endpoint.$": "$.compute_endpoint_id",
+                        "function.$": "$.compute_ingest_function_id",
+                        "kwargs": {
+                            "search_index.$": "$.search_index",
+                            "visible_to.$": "$.visible_to",
+                            "entries.$": "$.crawl_result.details.result",
+                        },
                     },
                     "ResultPath": "$.search_result",
                     "Next": "CreatePortal",
                 },
                 "CreatePortal": {
                     "Type": "Action",
-                    "ActionUrl": "https://actions.globus.org/github/fork",
+                    "ActionUrl": "https://compute.actions.globus.org",
                     "Parameters": {
-                        "repo_owner": "globus",
-                        "repo_name": "template-search-portal",
-                        "new_name.$": "$.portal_name",
-                        "token.$": "$.github_token",
-                        "username.$": "$.github_username",
-                    },
-                    "ResultPath": "$.fork_result",
-                    "Next": "ConfigurePortal",
-                },
-                "ConfigurePortal": {
-                    "Type": "Action",
-                    "ActionUrl": "https://actions.globus.org/github/update_file",
-                    "Parameters": {
-                        "repo_owner.$": "$.github_username",
-                        "repo_name.$": "$.portal_name",
-                        "file_path": "static.json",
-                        "content": {
-                            "index": {
-                                "uuid.$": "$.search_index",
-                                "name.$": "$.search_index",
-                            },
-                            "branding": {
-                                "title.$": "$.portal_title",
-                                "subtitle.$": "$.portal_subtitle",
-                            },
+                        "endpoint.$": "$.compute_endpoint_id",
+                        "function.$": "$.compute_fork_function_id",
+                        "kwargs": {
+                            "repo_owner": "globus",
+                            "repo_name": "template-search-portal",
+                            "new_name.$": "$.portal_name",
+                            "token.$": "$.github_token",
+                            "username.$": "$.github_username",
                         },
-                        "message": "Configure portal",
-                        "token.$": "$.github_token",
                     },
-                    "ResultPath": "$.configure_result",
+                    "ResultPath": "$.portal_result",
                     "End": True,
                 },
             },
         },
     }
 
-    def __init__(
-        self,
-        flow_id: Optional[str] = None,
-        client_id: Optional[str] = None,
-        client_secret: Optional[str] = None,
-        flow_scope: Optional[str] = None,
-    ):
+    def __init__(self, flow_id: Optional[str] = None):
         """
         Initialize the SPAwn Flow.
 
         Args:
             flow_id: Existing Globus Flow ID. If None, a new flow will be created.
-            client_id: Globus Auth client ID.
-            client_secret: Globus Auth client secret.
             flow_scope: Globus Auth scope for the flow.
         """
-        self.flow_id = flow_id
-        self.client_id = client_id
-        self.client_secret = client_secret
-        self.flow_scope = flow_scope
         self.flow_client = None
+        self.flow_id = flow_id
 
     def _get_flow_client(self):
         """Get the Globus Automate Client."""
-        _ensure_globus_flow_imports()
 
         if self.flow_client is None:
-            self.flow_client = globus_automate_client.FlowsClient(
-                client_id=self.client_id,
-                client_secret=self.client_secret,
+            app = UserApp(
+                "SPAwn CLI App", client_id="367628a1-4b6a-4176-82bd-422f071d1adc"
             )
+            self.flow_client = globus_sdk.FlowsClient(app=app)
 
         return self.flow_client
 
@@ -246,7 +204,6 @@ class SPAwnFlow:
             self.FLOW_DEFINITION["definition"],
             self.FLOW_DEFINITION["input_schema"],
             description=self.FLOW_DEFINITION["description"],
-            visible_to=["public"],
         )
 
         self.flow_id = flow["id"]

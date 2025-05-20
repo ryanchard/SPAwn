@@ -888,30 +888,13 @@ def create_search_index(
 
 
 @flow.command(name="create")
-@click.option(
-    "--client-id",
-    help="Globus Auth client ID",
-)
-@click.option(
-    "--client-secret",
-    help="Globus Auth client secret",
-)
-def create_flow_cmd(
-    client_id: Optional[str],
-    client_secret: Optional[str],
-):
+def create_flow_cmd():
     """
     Create a new Globus Flow for SPAwn.
     """
-    # Use command-line options or fall back to config values
-    client_id = client_id or config.globus_client_id
-    client_secret = client_secret or config.globus_client_secret
 
     try:
-        flow = SPAwnFlow(
-            client_id=client_id,
-            client_secret=client_secret,
-        )
+        flow = SPAwnFlow()
 
         flow_id = flow.create_flow()
 
@@ -1016,14 +999,6 @@ def create_flow_cmd(
     help="Globus Auth identities that can see entries (can be used multiple times)",
 )
 @click.option(
-    "--client-id",
-    help="Globus Auth client ID",
-)
-@click.option(
-    "--client-secret",
-    help="Globus Auth client secret",
-)
-@click.option(
     "--wait/--no-wait",
     default=False,
     help="Whether to wait for the flow to complete",
@@ -1053,8 +1028,6 @@ def run_flow_cmd(
     polling_rate: Optional[float],
     ignore_dot_dirs: bool,
     visible_to: List[str],
-    client_id: Optional[str],
-    client_secret: Optional[str],
     wait: bool,
     timeout: int,
 ):
@@ -1071,9 +1044,6 @@ def run_flow_cmd(
     github_token = github_token or config.github_token
     github_username = github_username or config.github_username
 
-    client_id = client_id or config.globus_client_id
-    client_secret = client_secret or config.globus_client_secret
-
     exclude_patterns = list(exclude) if exclude else None
     include_patterns = list(include) if include else None
     exclude_regex_patterns = list(exclude_regex) if exclude_regex else None
@@ -1088,8 +1058,6 @@ def run_flow_cmd(
         # Create or get flow
         flow = SPAwnFlow(
             flow_id=flow_id,
-            client_id=client_id,
-            client_secret=client_secret,
         )
 
         if not flow_id:
