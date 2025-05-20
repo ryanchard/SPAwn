@@ -94,8 +94,6 @@ def remote_crawl_directory(
             metadata["file_path"] = str(file_path)
 
             metadata_dict[str(file_path.absolute())] = metadata
-
-            return (str(file_path.absolute()), metadata, metadata_dict)
         except Exception as e:
             print(f"Error extracting metadata for {file_path}: {e}")
 
