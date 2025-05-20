@@ -84,21 +84,18 @@ def remote_crawl_directory(
     )
 
     # Extract metadata
-    metadata_list = []
     metadata_dict = {}
 
     for file_path in files:
         try:
             metadata = extract_metadata(file_path)
 
-            # Convert Path objects to strings for JSON serialization
-            metadata["path"] = str(metadata["path"])
-
             # Add file_path as string
             metadata["file_path"] = str(file_path)
 
-            metadata_list.append(metadata)
             metadata_dict[str(file_path.absolute())] = metadata
+
+            return (str(file_path.absolute()), metadata, metadata_dict)
         except Exception as e:
             print(f"Error extracting metadata for {file_path}: {e}")
 
@@ -106,7 +103,9 @@ def remote_crawl_directory(
     if save_json and json_dir:
         try:
             json_dir_path = Path(json_dir)
-            save_metadata_to_json(file_path_or_metadata=metadata_dict, output_dir=json_dir_path)
+            save_metadata_to_json(
+                file_path_or_metadata=metadata_dict, output_dir=json_dir_path
+            )
             print(
                 f"Saved metadata for {len(metadata_dict)} files to JSON in {json_dir}"
             )
@@ -114,7 +113,7 @@ def remote_crawl_directory(
         except Exception as e:
             print(f"Error saving metadata to JSON: {e}")
 
-    return metadata_list
+    return metadata_dict
 
 
 def ingest_metadata_from_file(
@@ -157,7 +156,7 @@ def ingest_metadata_from_file(
 
     # Load metadata from file
     try:
-        with open(metadata_file_path, 'r') as f:
+        with open(metadata_file_path, "r") as f:
             metadata = json.load(f)
     except Exception as e:
         print(f"Error loading metadata from {metadata_file_path}: {e}")
@@ -259,6 +258,9 @@ def remote_ingest_metadata(
 
     if not wait:
         return task.task_id
+
+    res = task.result()
+    print(res)
 
     # Wait for task to complete
     logger.info(f"Waiting for ingest task {task.task_id} to complete...")
