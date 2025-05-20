@@ -11,27 +11,9 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-# Import these only when needed to avoid dependency issues
-# when running as a Globus Compute function
-GLOBUS_COMPUTE_IMPORTS = False
+from globus_compute_sdk import Executor, Client
 
 logger = logging.getLogger(__name__)
-
-
-def _ensure_globus_compute_imports():
-    """Ensure Globus Compute imports are available."""
-    global GLOBUS_COMPUTE_IMPORTS
-    if not GLOBUS_COMPUTE_IMPORTS:
-        try:
-            global globus_compute_sdk
-            import globus_compute_sdk
-
-            GLOBUS_COMPUTE_IMPORTS = True
-        except ImportError:
-            logger.error(
-                "Globus Compute SDK not installed. Run 'pip install globus-compute-sdk'"
-            )
-            raise
 
 
 def remote_crawl_directory(
@@ -117,25 +99,22 @@ def remote_crawl_directory(
 
     return metadata_list
 
-
 def register_functions(endpoint_id: str) -> Dict[str, str]:
     """
     Register functions with Globus Compute.
-
+    
     Args:
         endpoint_id: Globus Compute endpoint ID.
-
+        
     Returns:
         Dictionary mapping function names to function IDs.
-    """
-    _ensure_globus_compute_imports()
-
+    """   
     # Create Globus Compute client
-    gc = globus_compute_sdk.Client()
-
+    gc = Client()
+    
     # Register functions
     function_ids = {}
-
+    
     # Register remote_crawl_directory
     remote_crawl_directory_id = gc.register_function(
         remote_crawl_directory,
@@ -144,9 +123,8 @@ def register_functions(endpoint_id: str) -> Dict[str, str]:
         public=False,
     )
     function_ids["remote_crawl_directory"] = remote_crawl_directory_id
-
+    
     return function_ids
-
 
 def remote_crawl(
     endpoint_id: str,
@@ -183,32 +161,21 @@ def remote_crawl(
         If wait is True, returns the list of metadata dictionaries.
         If wait is False, returns the task ID.
     """
-    _ensure_globus_compute_imports()
-
     # Create Globus Compute client
-    gc = globus_compute_sdk.Client()
-
-    # Register functions if needed
-    function_ids = register_functions(endpoint_id)
-
-    # Get function ID
-    function_id = function_ids["remote_crawl_directory"]
+    gce = Executor(endpoint_id=endpoint_id)
 
     # Submit task
-    task = gc.run(
-        function_id=function_id,
-        endpoint_id=endpoint_id,
-        function_kwargs={
-            "directory_path": directory_path,
-            "exclude_patterns": exclude_patterns,
-            "include_patterns": include_patterns,
-            "exclude_regex": exclude_regex,
-            "include_regex": include_regex,
-            "max_depth": max_depth,
-            "follow_symlinks": follow_symlinks,
-            "polling_rate": polling_rate,
-            "ignore_dot_dirs": ignore_dot_dirs,
-        },
+    task = gce.submit(
+        remote_crawl_directory,
+        directory_path=directory_path,
+        exclude_patterns=exclude_patterns,
+        include_patterns=include_patterns,
+        exclude_regex=exclude_regex,
+        include_regex=include_regex,
+        max_depth=max_depth,
+        follow_symlinks=follow_symlinks,
+        polling_rate=polling_rate,
+        ignore_dot_dirs=ignore_dot_dirs,
     )
 
     logger.info(f"Submitted task {task.task_id} to endpoint {endpoint_id}")
@@ -236,10 +203,8 @@ def get_task_result(task_id: str, timeout: int = 3600) -> Any:
     Returns:
         The result of the task.
     """
-    _ensure_globus_compute_imports()
-
     # Create Globus Compute client
-    gc = globus_compute_sdk.Client()
+    gc = Client()
 
     # Get task
     task = gc.get_task(task_id)

@@ -5,6 +5,7 @@ This module provides a command-line interface for the SPAwn tool.
 """
 
 import logging
+import json
 import sys
 from pathlib import Path
 from typing import List, Optional
@@ -210,15 +211,11 @@ def crawl(
     index_uuid = search_index or config.globus_search_index
     if not index_uuid:
         logger.error("No Globus Search index UUID provided")
-        return
+        sys.exit(1)
 
-    # Get a Globus Auth token for Search
-
-    app = UserApp("SPAwn CLI App", client_id="367628a1-4b6a-4176-82bd-422f071d1adc")
-    app.add_scope_requirements(
-        {"search": [globus_sdk.scopes.SearchScopes.make_mutable("all")]}
-    )
-    search_client = SearchClient(app=app)
+    client = GlobusSearchClient(
+                index_uuid=search_index,
+            )
 
     # Get visible_to from options or config
     visible_to_list = (
@@ -228,10 +225,9 @@ def crawl(
     # Publish metadata to Globus Search
     logger.info(f"Publishing metadata to Globus Search index: {index_uuid}")
 
-    result = publish_metadata(
+    result = client.publish_metadata(
         metadata=metadata,
         index_uuid=index_uuid,
-        search_client=search_client,
         visible_to=visible_to_list,
     )
 
@@ -245,10 +241,6 @@ def crawl(
 @click.option(
     "--search-index",
     help="Globus Search index UUID",
-)
-@click.option(
-    "--auth-token",
-    help="Globus Auth token with search.ingest scope",
 )
 def get_entry(
     subject: Optional[str],
@@ -266,18 +258,11 @@ def get_entry(
         logger.error("No Globus Search index UUID provided")
         sys.exit(1)
 
-    # Get auth token from options or config
-    token = auth_token or config.globus_auth_token
-
-    # Create Globus Search client
-    client = GlobusSearchClient(
-        index_uuid=index_uuid,
-        auth_token=token,
-    )
+    client = GlobusSearchClient(index_uuid=index_uuid)
 
     if subject:
         # Get entry by subject
-        entry = client.get_entry(subject)
+        entry = client.get_entry(index_uuid, subject)
 
         if entry:
             import json
@@ -727,7 +712,6 @@ def remote_crawl_cmd(
                 # Create Globus Search client
                 client = GlobusSearchClient(
                     index_uuid=search_index,
-                    auth_token=auth_token,
                 )
 
                 # Ingest entries

@@ -10,7 +10,10 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
+import globus_sdk
+
 from globus_sdk import SearchClient
+from globus_sdk import UserApp, ClientApp
 
 import requests
 
@@ -25,20 +28,21 @@ class GlobusSearchClient:
     def __init__(
         self,
         index_uuid: str,
-        search_client: SearchClient,
-        base_url: str = "https://search.api.globus.org/v1",
     ):
         """
         Initialize the Globus Search client.
 
         Args:
             index_uuid: UUID of the Globus Search index.
-            search_client: Globus SearchClient
-            base_url: Globus Search API base URL.
         """
         self.index_uuid = index_uuid
-        self.search_client = search_client
-        self.base_url = base_url
+
+        app = UserApp("SPAwn CLI App", client_id="367628a1-4b6a-4176-82bd-422f071d1adc")
+        app.add_scope_requirements(
+            {"search": [globus_sdk.scopes.SearchScopes.make_mutable("all")]}
+        )
+        self.search_client = SearchClient(app=app)
+
 
     def _get_headers(self) -> Dict[str, str]:
         """
@@ -240,7 +244,6 @@ def metadata_to_gmeta_entry(
 def publish_metadata(
     metadata: Dict[str, str],
     index_uuid: str,
-    search_client: SearchClient,
     batch_size: int = 100,
     subject_prefix: str = "file://",
     visible_to: Optional[List[str]] = None,
@@ -264,7 +267,6 @@ def publish_metadata(
     # Create Globus Search client
     client = GlobusSearchClient(
         index_uuid=index_uuid,
-        search_client=search_client,
     )
 
     # Extract metadata and create GMetaEntries
