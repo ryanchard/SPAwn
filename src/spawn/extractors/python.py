@@ -29,7 +29,9 @@ class PythonMetadataExtractor(MetadataExtractor):
         "text/x-script.python",
     ]
 
-    def __init__(self, analyze_complexity: bool = True, extract_docstrings: bool = True):
+    def __init__(
+        self, analyze_complexity: bool = True, extract_docstrings: bool = True
+    ):
         """
         Initialize the Python metadata extractor.
 
@@ -60,41 +62,41 @@ class PythonMetadataExtractor(MetadataExtractor):
             # Basic file statistics
             metadata["line_count"] = content.count("\n") + 1
             metadata["char_count"] = len(content)
-            
+
             # Parse the Python code
             try:
                 tree = ast.parse(content)
-                
+
                 # Extract module-level docstring
                 if self.extract_docstrings and ast.get_docstring(tree):
                     metadata["module_docstring"] = ast.get_docstring(tree)
-                
+
                 # Extract imports
                 imports = self._extract_imports(tree)
                 if imports:
                     metadata["imports"] = imports
-                
+
                 # Extract classes
                 classes = self._extract_classes(tree)
                 if classes:
                     metadata["classes"] = classes
-                
+
                 # Extract functions
                 functions = self._extract_functions(tree)
                 if functions:
                     metadata["functions"] = functions
-                
+
                 # Extract variables
                 variables = self._extract_variables(tree)
                 if variables:
                     metadata["variables"] = variables
-                
+
                 # Analyze code complexity if requested
                 if self.analyze_complexity:
                     complexity = self._analyze_complexity(tree, content)
                     if complexity:
                         metadata["complexity"] = complexity
-                
+
             except SyntaxError as e:
                 metadata["error"] = f"Syntax error: {str(e)}"
                 logger.debug(f"Syntax error in {file_path}: {e}")
@@ -120,22 +122,68 @@ class PythonMetadataExtractor(MetadataExtractor):
             "third_party": [],
             "local": [],
         }
-        
-        standard_libs = set([
-            "abc", "argparse", "ast", "asyncio", "base64", "collections", "concurrent", 
-            "contextlib", "copy", "csv", "datetime", "decimal", "difflib", "enum", 
-            "functools", "glob", "gzip", "hashlib", "http", "importlib", "inspect", 
-            "io", "itertools", "json", "logging", "math", "multiprocessing", "os", 
-            "pathlib", "pickle", "random", "re", "shutil", "signal", "socket", 
-            "sqlite3", "statistics", "string", "subprocess", "sys", "tempfile", 
-            "threading", "time", "traceback", "typing", "unittest", "urllib", "uuid", 
-            "warnings", "weakref", "xml", "zipfile"
-        ])
-        
+
+        standard_libs = set(
+            [
+                "abc",
+                "argparse",
+                "ast",
+                "asyncio",
+                "base64",
+                "collections",
+                "concurrent",
+                "contextlib",
+                "copy",
+                "csv",
+                "datetime",
+                "decimal",
+                "difflib",
+                "enum",
+                "functools",
+                "glob",
+                "gzip",
+                "hashlib",
+                "http",
+                "importlib",
+                "inspect",
+                "io",
+                "itertools",
+                "json",
+                "logging",
+                "math",
+                "multiprocessing",
+                "os",
+                "pathlib",
+                "pickle",
+                "random",
+                "re",
+                "shutil",
+                "signal",
+                "socket",
+                "sqlite3",
+                "statistics",
+                "string",
+                "subprocess",
+                "sys",
+                "tempfile",
+                "threading",
+                "time",
+                "traceback",
+                "typing",
+                "unittest",
+                "urllib",
+                "uuid",
+                "warnings",
+                "weakref",
+                "xml",
+                "zipfile",
+            ]
+        )
+
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 for name in node.names:
-                    module_name = name.name.split('.')[0]
+                    module_name = name.name.split(".")[0]
                     if module_name in standard_libs:
                         imports["standard_library"].append(name.name)
                     else:
@@ -144,22 +192,30 @@ class PythonMetadataExtractor(MetadataExtractor):
                             imports["local"].append(name.name)
                         else:
                             imports["third_party"].append(name.name)
-            
+
             elif isinstance(node, ast.ImportFrom):
                 if node.module:
-                    module_name = node.module.split('.')[0] if node.module else ""
+                    module_name = node.module.split(".")[0] if node.module else ""
                     imported_names = [name.name for name in node.names]
-                    
+
                     # Handle relative imports
                     if node.level > 0:
-                        imports["local"].append(f"{'.' * node.level}{node.module or ''} -> {', '.join(imported_names)}")
+                        imports["local"].append(
+                            f"{'.' * node.level}{node.module or ''} -> {', '.join(imported_names)}"
+                        )
                     elif module_name in standard_libs:
-                        imports["standard_library"].append(f"{node.module} -> {', '.join(imported_names)}")
+                        imports["standard_library"].append(
+                            f"{node.module} -> {', '.join(imported_names)}"
+                        )
                     elif module_name.startswith("spawn"):
-                        imports["local"].append(f"{node.module} -> {', '.join(imported_names)}")
+                        imports["local"].append(
+                            f"{node.module} -> {', '.join(imported_names)}"
+                        )
                     else:
-                        imports["third_party"].append(f"{node.module} -> {', '.join(imported_names)}")
-        
+                        imports["third_party"].append(
+                            f"{node.module} -> {', '.join(imported_names)}"
+                        )
+
         # Remove empty categories
         return {k: v for k, v in imports.items() if v}
 
@@ -174,23 +230,27 @@ class PythonMetadataExtractor(MetadataExtractor):
             List of class information.
         """
         classes = []
-        
+
         for node in ast.iter_child_nodes(tree):
             if isinstance(node, ast.ClassDef):
                 class_info = {
                     "name": node.name,
                     "line": node.lineno,
-                    "end_line": node.end_lineno if hasattr(node, 'end_lineno') else None,
+                    "end_line": (
+                        node.end_lineno if hasattr(node, "end_lineno") else None
+                    ),
                 }
-                
+
                 # Extract base classes
                 if node.bases:
-                    class_info["bases"] = [self._get_name_from_expr(base) for base in node.bases]
-                
+                    class_info["bases"] = [
+                        self._get_name_from_expr(base) for base in node.bases
+                    ]
+
                 # Extract docstring
                 if self.extract_docstrings and ast.get_docstring(node):
                     class_info["docstring"] = ast.get_docstring(node)
-                
+
                 # Extract methods
                 methods = []
                 for child in ast.iter_child_nodes(node):
@@ -198,9 +258,13 @@ class PythonMetadataExtractor(MetadataExtractor):
                         method_info = {
                             "name": child.name,
                             "line": child.lineno,
-                            "end_line": child.end_lineno if hasattr(child, 'end_lineno') else None,
+                            "end_line": (
+                                child.end_lineno
+                                if hasattr(child, "end_lineno")
+                                else None
+                            ),
                         }
-                        
+
                         # Check if it's a special method
                         if child.name.startswith("__") and child.name.endswith("__"):
                             method_info["type"] = "special"
@@ -209,30 +273,32 @@ class PythonMetadataExtractor(MetadataExtractor):
                             method_info["type"] = "private"
                         else:
                             method_info["type"] = "public"
-                        
+
                         # Extract method docstring
                         if self.extract_docstrings and ast.get_docstring(child):
                             method_info["docstring"] = ast.get_docstring(child)
-                        
+
                         # Extract parameters
                         if child.args:
                             params = []
                             for arg in child.args.args:
                                 param = {"name": arg.arg}
                                 if arg.annotation:
-                                    param["annotation"] = self._get_name_from_expr(arg.annotation)
+                                    param["annotation"] = self._get_name_from_expr(
+                                        arg.annotation
+                                    )
                                 params.append(param)
-                            
+
                             if params:
                                 method_info["parameters"] = params
-                        
+
                         methods.append(method_info)
-                
+
                 if methods:
                     class_info["methods"] = methods
-                
+
                 classes.append(class_info)
-        
+
         return classes
 
     def _extract_functions(self, tree: ast.Module) -> List[Dict[str, Any]]:
@@ -246,43 +312,49 @@ class PythonMetadataExtractor(MetadataExtractor):
             List of function information.
         """
         functions = []
-        
+
         for node in ast.iter_child_nodes(tree):
-            if isinstance(node, ast.FunctionDef) and not isinstance(node.parent, ast.ClassDef):
+            if isinstance(node, ast.FunctionDef) and not isinstance(
+                node.parent, ast.ClassDef
+            ):
                 function_info = {
                     "name": node.name,
                     "line": node.lineno,
-                    "end_line": node.end_lineno if hasattr(node, 'end_lineno') else None,
+                    "end_line": (
+                        node.end_lineno if hasattr(node, "end_lineno") else None
+                    ),
                 }
-                
+
                 # Check if it's a private function
                 if node.name.startswith("_"):
                     function_info["type"] = "private"
                 else:
                     function_info["type"] = "public"
-                
+
                 # Extract function docstring
                 if self.extract_docstrings and ast.get_docstring(node):
                     function_info["docstring"] = ast.get_docstring(node)
-                
+
                 # Extract parameters
                 if node.args:
                     params = []
                     for arg in node.args.args:
                         param = {"name": arg.arg}
                         if arg.annotation:
-                            param["annotation"] = self._get_name_from_expr(arg.annotation)
+                            param["annotation"] = self._get_name_from_expr(
+                                arg.annotation
+                            )
                         params.append(param)
-                    
+
                     if params:
                         function_info["parameters"] = params
-                
+
                 # Extract return annotation
                 if node.returns:
                     function_info["returns"] = self._get_name_from_expr(node.returns)
-                
+
                 functions.append(function_info)
-        
+
         return functions
 
     def _extract_variables(self, tree: ast.Module) -> List[Dict[str, Any]]:
@@ -296,7 +368,7 @@ class PythonMetadataExtractor(MetadataExtractor):
             List of variable information.
         """
         variables = []
-        
+
         for node in ast.iter_child_nodes(tree):
             if isinstance(node, ast.Assign):
                 for target in node.targets:
@@ -305,7 +377,7 @@ class PythonMetadataExtractor(MetadataExtractor):
                             "name": target.id,
                             "line": node.lineno,
                         }
-                        
+
                         # Try to determine the type of the value
                         if isinstance(node.value, ast.Str):
                             var_info["type"] = "str"
@@ -319,27 +391,32 @@ class PythonMetadataExtractor(MetadataExtractor):
                             var_info["type"] = "tuple"
                         elif isinstance(node.value, ast.Set):
                             var_info["type"] = "set"
-                        elif isinstance(node.value, ast.NameConstant) and node.value.value is None:
+                        elif (
+                            isinstance(node.value, ast.NameConstant)
+                            and node.value.value is None
+                        ):
                             var_info["type"] = "None"
-                        elif isinstance(node.value, ast.NameConstant) and isinstance(node.value.value, bool):
+                        elif isinstance(node.value, ast.NameConstant) and isinstance(
+                            node.value.value, bool
+                        ):
                             var_info["type"] = "bool"
                         else:
                             var_info["type"] = "unknown"
-                        
+
                         variables.append(var_info)
-            
+
             elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
                 var_info = {
                     "name": node.target.id,
                     "line": node.lineno,
                 }
-                
+
                 # Extract type annotation
                 if node.annotation:
                     var_info["annotation"] = self._get_name_from_expr(node.annotation)
-                
+
                 variables.append(var_info)
-        
+
         return variables
 
     def _analyze_complexity(self, tree: ast.Module, content: str) -> Dict[str, Any]:
@@ -354,17 +431,34 @@ class PythonMetadataExtractor(MetadataExtractor):
             Dictionary of complexity metrics.
         """
         complexity = {}
-        
+
         # Count statements
         statement_count = 0
         for node in ast.walk(tree):
-            if isinstance(node, (ast.Assign, ast.AugAssign, ast.Return, ast.Raise, ast.Assert,
-                                ast.Import, ast.ImportFrom, ast.If, ast.For, ast.While,
-                                ast.Try, ast.ExceptHandler, ast.Pass, ast.Break, ast.Continue)):
+            if isinstance(
+                node,
+                (
+                    ast.Assign,
+                    ast.AugAssign,
+                    ast.Return,
+                    ast.Raise,
+                    ast.Assert,
+                    ast.Import,
+                    ast.ImportFrom,
+                    ast.If,
+                    ast.For,
+                    ast.While,
+                    ast.Try,
+                    ast.ExceptHandler,
+                    ast.Pass,
+                    ast.Break,
+                    ast.Continue,
+                ),
+            ):
                 statement_count += 1
-        
+
         complexity["statement_count"] = statement_count
-        
+
         # Count control flow statements
         control_flow = {
             "if": len([n for n in ast.walk(tree) if isinstance(n, ast.If)]),
@@ -372,28 +466,33 @@ class PythonMetadataExtractor(MetadataExtractor):
             "while": len([n for n in ast.walk(tree) if isinstance(n, ast.While)]),
             "try": len([n for n in ast.walk(tree) if isinstance(n, ast.Try)]),
         }
-        
+
         complexity["control_flow"] = control_flow
-        
+
         # Calculate cyclomatic complexity (McCabe)
         # A simple approximation: 1 + number of branches
-        branches = control_flow["if"] + control_flow["for"] + control_flow["while"] + control_flow["try"]
+        branches = (
+            control_flow["if"]
+            + control_flow["for"]
+            + control_flow["while"]
+            + control_flow["try"]
+        )
         complexity["cyclomatic_complexity"] = 1 + branches
-        
+
         # Count comments
         comment_lines = 0
-        for line in content.split('\n'):
+        for line in content.split("\n"):
             stripped = line.strip()
-            if stripped.startswith('#'):
+            if stripped.startswith("#"):
                 comment_lines += 1
-        
+
         complexity["comment_lines"] = comment_lines
-        
+
         # Calculate comment ratio
-        total_lines = content.count('\n') + 1
+        total_lines = content.count("\n") + 1
         if total_lines > 0:
             complexity["comment_ratio"] = round(comment_lines / total_lines, 2)
-        
+
         return complexity
 
     def _get_name_from_expr(self, expr) -> str:
@@ -416,9 +515,13 @@ class PythonMetadataExtractor(MetadataExtractor):
             return f"{self._get_name_from_expr(expr.func)}(...)"
         elif isinstance(expr, ast.Constant):
             return str(expr.value)
-        elif hasattr(ast, 'Str') and isinstance(expr, ast.Str):  # Python 3.7 compatibility
+        elif hasattr(ast, "Str") and isinstance(
+            expr, ast.Str
+        ):  # Python 3.7 compatibility
             return expr.s
-        elif hasattr(ast, 'Num') and isinstance(expr, ast.Num):  # Python 3.7 compatibility
+        elif hasattr(ast, "Num") and isinstance(
+            expr, ast.Num
+        ):  # Python 3.7 compatibility
             return str(expr.n)
         else:
             return "..."

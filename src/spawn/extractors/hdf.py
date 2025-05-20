@@ -30,7 +30,9 @@ class HDFMetadataExtractor(MetadataExtractor):
         "application/x-hdf5",
     ]
 
-    def __init__(self, max_datasets_to_sample: int = 10, max_attrs_per_dataset: int = 20):
+    def __init__(
+        self, max_datasets_to_sample: int = 10, max_attrs_per_dataset: int = 20
+    ):
         """
         Initialize the HDF metadata extractor.
 
@@ -57,49 +59,52 @@ class HDFMetadataExtractor(MetadataExtractor):
             # Try to import h5py, which is required for HDF5 file handling
             try:
                 import h5py
+
                 has_h5py = True
             except ImportError:
                 has_h5py = False
-                metadata["error"] = "h5py library not available for HDF5 file processing"
+                metadata["error"] = (
+                    "h5py library not available for HDF5 file processing"
+                )
                 return metadata
 
             if not has_h5py:
                 return metadata
 
             # Extract metadata using h5py
-            with h5py.File(file_path, 'r') as hdf_file:
+            with h5py.File(file_path, "r") as hdf_file:
                 # Get basic file info
                 metadata["format"] = "HDF5"
                 metadata["root_groups"] = list(hdf_file.keys())
-                
+
                 # Extract file attributes
                 file_attrs = {}
                 for attr_name, attr_value in hdf_file.attrs.items():
                     # Convert numpy arrays to lists for JSON serialization
-                    if hasattr(attr_value, 'tolist'):
+                    if hasattr(attr_value, "tolist"):
                         attr_value = attr_value.tolist()
                     file_attrs[attr_name] = str(attr_value)
-                
+
                 metadata["file_attributes"] = file_attrs
-                
+
                 # Extract dataset structure
                 datasets_info = {}
                 self._extract_group_info(hdf_file, datasets_info, "", 0)
-                
+
                 metadata["datasets"] = datasets_info
-                
+
                 # Count total datasets and estimate total size
                 total_datasets = 0
                 total_size_bytes = 0
-                
+
                 for path, info in datasets_info.items():
                     if info.get("type") == "dataset":
                         total_datasets += 1
                         total_size_bytes += info.get("size_bytes", 0)
-                
+
                 metadata["total_datasets"] = total_datasets
                 metadata["total_size_bytes"] = total_size_bytes
-                
+
         except Exception as e:
             logger.error(f"Error extracting HDF metadata from {file_path}: {e}")
             metadata["error"] = str(e)
@@ -120,33 +125,35 @@ class HDFMetadataExtractor(MetadataExtractor):
         # Avoid going too deep in the hierarchy
         if depth > max_depth:
             return
-        
+
         # Limit the number of datasets we process
         datasets_processed = 0
-        
+
         # Process all items in the group
         for name, item in group.items():
             # Create the full path for this item
             item_path = f"{path_prefix}/{name}" if path_prefix else name
-            
+
             # Check if it's a dataset or a group
-            if hasattr(item, 'items'):  # It's a group
+            if hasattr(item, "items"):  # It's a group
                 # Add group info
                 info_dict[item_path] = {
                     "type": "group",
                     "num_items": len(item),
                     "attributes": self._extract_attributes(item),
                 }
-                
+
                 # Recursively process this group
-                self._extract_group_info(item, info_dict, item_path, depth + 1, max_depth)
+                self._extract_group_info(
+                    item, info_dict, item_path, depth + 1, max_depth
+                )
             else:  # It's a dataset
                 # Skip if we've processed enough datasets
                 if datasets_processed >= self.max_datasets_to_sample:
                     continue
-                
+
                 datasets_processed += 1
-                
+
                 # Extract dataset info
                 dataset_info = {
                     "type": "dataset",
@@ -155,11 +162,12 @@ class HDFMetadataExtractor(MetadataExtractor):
                     "size_bytes": item.size * item.dtype.itemsize,
                     "attributes": self._extract_attributes(item),
                 }
-                
+
                 # Add dataset statistics if it's numeric and not too large
-                if item.dtype.kind in 'iuf' and item.size < 1000:
+                if item.dtype.kind in "iuf" and item.size < 1000:
                     try:
                         import numpy as np
+
                         data = item[()]
                         dataset_info["statistics"] = {
                             "min": float(np.min(data)),
@@ -168,8 +176,10 @@ class HDFMetadataExtractor(MetadataExtractor):
                             "std": float(np.std(data)),
                         }
                     except Exception as e:
-                        logger.debug(f"Could not compute statistics for {item_path}: {e}")
-                
+                        logger.debug(
+                            f"Could not compute statistics for {item_path}: {e}"
+                        )
+
                 info_dict[item_path] = dataset_info
 
     def _extract_attributes(self, item):
@@ -183,30 +193,30 @@ class HDFMetadataExtractor(MetadataExtractor):
             Dictionary of attributes
         """
         attributes = {}
-        
+
         # Limit the number of attributes we extract
         attr_count = 0
-        
+
         for attr_name, attr_value in item.attrs.items():
             if attr_count >= self.max_attrs_per_dataset:
                 break
-                
+
             attr_count += 1
-            
+
             # Convert numpy arrays to lists for JSON serialization
-            if hasattr(attr_value, 'tolist'):
+            if hasattr(attr_value, "tolist"):
                 try:
                     attr_value = attr_value.tolist()
                 except:
                     attr_value = str(attr_value)
-            
+
             # Convert bytes to strings
             if isinstance(attr_value, bytes):
                 try:
-                    attr_value = attr_value.decode('utf-8')
+                    attr_value = attr_value.decode("utf-8")
                 except:
                     attr_value = str(attr_value)
-            
+
             attributes[attr_name] = attr_value
-        
+
         return attributes

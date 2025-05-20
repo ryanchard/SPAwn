@@ -52,6 +52,7 @@ class PDFMetadataExtractor(MetadataExtractor):
             # Try to import PyPDF2, which is required for PDF processing
             try:
                 import PyPDF2
+
                 has_pypdf2 = True
             except ImportError:
                 has_pypdf2 = False
@@ -64,14 +65,14 @@ class PDFMetadataExtractor(MetadataExtractor):
             # Open the PDF file
             with open(file_path, "rb") as f:
                 pdf_reader = PyPDF2.PdfReader(f)
-                
+
                 # Basic PDF information
                 metadata["page_count"] = len(pdf_reader.pages)
-                
+
                 # Extract document information
                 if pdf_reader.metadata:
                     doc_info = pdf_reader.metadata
-                    
+
                     # Extract common metadata fields
                     if doc_info.get("/Title"):
                         metadata["title"] = doc_info.get("/Title")
@@ -85,30 +86,32 @@ class PDFMetadataExtractor(MetadataExtractor):
                         metadata["producer"] = doc_info.get("/Producer")
                     if doc_info.get("/Creator"):
                         metadata["creator"] = doc_info.get("/Creator")
-                    
+
                     # Extract creation and modification dates
                     if doc_info.get("/CreationDate"):
-                        creation_date = self._parse_pdf_date(doc_info.get("/CreationDate"))
+                        creation_date = self._parse_pdf_date(
+                            doc_info.get("/CreationDate")
+                        )
                         if creation_date:
                             metadata["creation_date"] = creation_date
-                    
+
                     if doc_info.get("/ModDate"):
                         mod_date = self._parse_pdf_date(doc_info.get("/ModDate"))
                         if mod_date:
                             metadata["modification_date"] = mod_date
-                
+
                 # Extract text content if requested
                 if self.extract_text:
                     text_content = ""
                     page_count = min(len(pdf_reader.pages), self.max_pages_to_extract)
-                    
+
                     for i in range(page_count):
                         try:
                             page = pdf_reader.pages[i]
                             text_content += page.extract_text() + "\n\n"
                         except Exception as e:
                             logger.debug(f"Error extracting text from page {i+1}: {e}")
-                    
+
                     # Add text content to metadata
                     if text_content:
                         # Truncate if too long
@@ -116,27 +119,33 @@ class PDFMetadataExtractor(MetadataExtractor):
                             metadata["text_preview"] = text_content[:10000] + "..."
                         else:
                             metadata["text_preview"] = text_content
-                        
+
                         # Calculate text statistics
-                        metadata["word_count"] = len(re.findall(r'\b\w+\b', text_content))
+                        metadata["word_count"] = len(
+                            re.findall(r"\b\w+\b", text_content)
+                        )
                         metadata["char_count"] = len(text_content)
-                
+
                 # Extract form fields if present
-                if hasattr(pdf_reader, 'get_fields') and callable(getattr(pdf_reader, 'get_fields')):
+                if hasattr(pdf_reader, "get_fields") and callable(
+                    getattr(pdf_reader, "get_fields")
+                ):
                     fields = pdf_reader.get_fields()
                     if fields:
                         form_fields = []
                         for field_name, field_value in fields.items():
-                            form_fields.append({
-                                "name": field_name,
-                                "type": type(field_value).__name__,
-                            })
+                            form_fields.append(
+                                {
+                                    "name": field_name,
+                                    "type": type(field_value).__name__,
+                                }
+                            )
                         metadata["form_fields"] = form_fields
                         metadata["is_form"] = True
-                
+
                 # Check for encryption
                 metadata["is_encrypted"] = pdf_reader.is_encrypted
-                
+
                 # Check for images (simple check)
                 has_images = False
                 for i in range(min(3, len(pdf_reader.pages))):  # Check first 3 pages
@@ -146,7 +155,7 @@ class PDFMetadataExtractor(MetadataExtractor):
                         if xobject:
                             has_images = True
                             break
-                
+
                 metadata["has_images"] = has_images
 
         except Exception as e:
@@ -169,7 +178,7 @@ class PDFMetadataExtractor(MetadataExtractor):
             # Remove 'D:' prefix if present
             if date_string.startswith("D:"):
                 date_string = date_string[2:]
-            
+
             # Basic format: YYYYMMDDHHmmSS
             if len(date_string) >= 14:
                 year = int(date_string[0:4])
@@ -178,17 +187,17 @@ class PDFMetadataExtractor(MetadataExtractor):
                 hour = int(date_string[8:10])
                 minute = int(date_string[10:12])
                 second = int(date_string[12:14])
-                
+
                 # Create datetime object
                 dt = datetime(year, month, day, hour, minute, second)
-                
+
                 # Parse timezone if present
-                if len(date_string) > 14 and date_string[14] in ['+', '-', 'Z']:
+                if len(date_string) > 14 and date_string[14] in ["+", "-", "Z"]:
                     # For simplicity, we're not adjusting for timezone here
                     pass
-                
+
                 return dt.isoformat()
-            
+
             return None
         except Exception as e:
             logger.debug(f"Error parsing PDF date '{date_string}': {e}")
