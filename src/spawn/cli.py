@@ -19,7 +19,12 @@ import click
 from spawn.config import config, load_config
 from spawn.crawler import crawl_directory
 from spawn.github import fork_template_portal, configure_static_json
-from spawn.globus_compute import remote_crawl, remote_ingest_metadata, register_functions, get_task_result
+from spawn.globus_compute import (
+    remote_crawl,
+    remote_ingest_metadata,
+    register_functions,
+    get_task_result,
+)
 from spawn.globus_flow import create_and_run_flow, SPAwnFlow
 from spawn.globus_search import publish_metadata, GlobusSearchClient
 from spawn.metadata import extract_metadata
@@ -741,16 +746,16 @@ def remote_crawl_cmd(
                 logger.info(
                     f"Publishing metadata to Globus Search index: {search_index}"
                 )
-                
+
                 # If we have a metadata file, use remote_ingest_metadata to ingest it
                 if save_json and json_dir:
                     # The metadata file path on the remote endpoint
                     metadata_file_path = str(Path(json_dir) / "SPAwn_metadata.json")
-                    
+
                     logger.info(f"Ingesting metadata from file: {metadata_file_path}")
-                    
+
                     # Use remote_ingest_metadata to ingest the metadata file
-                    
+
                     ingest_result = remote_ingest_metadata(
                         endpoint_id=endpoint,
                         metadata_file_path=metadata_file_path,
@@ -759,16 +764,16 @@ def remote_crawl_cmd(
                         wait=True,
                         timeout=timeout,
                     )
-                    
+
                     logger.info(
                         f"Published {ingest_result.get('success', 0)} entries, failed to publish {ingest_result.get('failed', 0)} entries"
                     )
                 else:
                     # We have the metadata in memory, so convert it to GMetaEntries and ingest it directly
                     from spawn.globus_search import metadata_to_gmeta_entry
-                    
+
                     logger.info("Converting metadata to GMetaEntries")
-                    
+
                     entries = []
                     for metadata in result:
                         try:
@@ -783,15 +788,15 @@ def remote_crawl_cmd(
                             logger.error(
                                 f"Error converting metadata for {metadata.get('file_path')}: {e}"
                             )
-                    
+
                     # Create Globus Search client
                     client = GlobusSearchClient(
                         index_uuid=search_index,
                     )
-                    
+
                     # Ingest entries
                     ingest_result = client.ingest_entries(entries)
-                    
+
                     logger.info(
                         f"Published {ingest_result['success']} entries, failed to publish {ingest_result['failed']} entries"
                     )
