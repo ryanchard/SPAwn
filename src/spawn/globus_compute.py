@@ -80,7 +80,7 @@ def remote_crawl_directory(
         polling_rate=polling_rate,
         ignore_dot_dirs=ignore_dot_dirs,
     )
-
+    
     # Extract metadata
     metadata_list = []
     for file_path in files:

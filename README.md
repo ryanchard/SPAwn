@@ -55,9 +55,6 @@ spawn github configure-portal ./portal --index-name "your-search-index-uuid" --t
 # Crawl a directory on a remote filesystem using Globus Compute
 spawn compute remote-crawl /path/to/directory --endpoint-id "your-compute-endpoint-id" --search-index "your-search-index-uuid"
 
-# Get the result of a Globus Compute task
-spawn compute get-result "your-task-id"
-
 # Create a Globus Flow for SPAwn
 spawn flow create
 

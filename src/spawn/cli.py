@@ -657,6 +657,10 @@ def remote_crawl_cmd(
             timeout=timeout,
         )
 
+        print("I am here")
+        print(result)
+        sys.exit(1)
+
         if wait:
             logger.info(f"Crawled {len(result)} files")
 
