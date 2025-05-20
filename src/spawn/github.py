@@ -257,6 +257,120 @@ class GitHubClient:
 
         return result
 
+    def enable_github_pages(
+        self,
+        repo_owner: str,
+        repo_name: str,
+        branch: str = "main",
+        path: str = "/",
+    ) -> Dict[str, Any]:
+        """
+        Enable GitHub Pages for a repository.
+
+        Args:
+            repo_owner: Owner of the repository.
+            repo_name: Name of the repository.
+            branch: Branch to publish from.
+            path: Directory to publish from. Use "/" for root.
+
+        Returns:
+            Dictionary with information about the GitHub Pages site.
+
+        Raises:
+            ValueError: If enabling GitHub Pages fails.
+        """
+        if not self.token:
+            raise ValueError("GitHub token is required to enable GitHub Pages")
+
+        # GitHub API endpoint for Pages
+        url = f"{self.api_url}/repos/{repo_owner}/{repo_name}/pages"
+
+        # Prepare request data
+        data = {
+            "source": {
+                "branch": branch,
+                "path": path
+            }
+        }
+
+        # Enable GitHub Pages
+        response = requests.post(url, headers=self._get_headers(), json=data)
+
+        if response.status_code not in [201, 204]:
+            raise ValueError(
+                f"Failed to enable GitHub Pages: {response.json().get('message', response.text)}"
+            )
+
+        # Get GitHub Pages information
+        response = requests.get(url, headers=self._get_headers())
+
+        if response.status_code != 200:
+            logger.warning(
+                f"Failed to get GitHub Pages information: {response.json().get('message', response.text)}"
+            )
+            return {"status": "enabled"}
+
+        result = response.json()
+        logger.info(f"Enabled GitHub Pages for {repo_owner}/{repo_name}")
+
+        return result
+
+    def enable_github_actions(
+        self,
+        repo_owner: str,
+        repo_name: str,
+    ) -> Dict[str, Any]:
+        """
+        Enable GitHub Actions for a repository.
+
+        Args:
+            repo_owner: Owner of the repository.
+            repo_name: Name of the repository.
+
+        Returns:
+            Dictionary with information about the GitHub Actions settings.
+
+        Raises:
+            ValueError: If enabling GitHub Actions fails.
+        """
+        if not self.token:
+            raise ValueError("GitHub token is required to enable GitHub Actions")
+
+        # GitHub API endpoint for repository actions settings
+        url = f"{self.api_url}/repos/{repo_owner}/{repo_name}/actions/permissions"
+
+        # Prepare request data to enable actions
+        data = {
+            "enabled": True,
+            "allowed_actions": "all"
+        }
+
+        # Enable GitHub Actions
+        response = requests.put(url, headers=self._get_headers(), json=data)
+
+        if response.status_code != 204:
+            raise ValueError(
+                f"Failed to enable GitHub Actions: {response.json().get('message', response.text)}"
+            )
+
+        # Enable Actions workflow permissions to allow write access
+        workflow_url = f"{self.api_url}/repos/{repo_owner}/{repo_name}/actions/permissions/workflow"
+        workflow_data = {
+            "default_workflow_permissions": "write",
+            "can_approve_pull_request_reviews": True
+        }
+
+        response = requests.put(workflow_url, headers=self._get_headers(), json=workflow_data)
+
+        if response.status_code != 204:
+            logger.warning(
+                f"Failed to set workflow permissions: {response.json().get('message', response.text)}"
+            )
+
+        logger.info(f"Enabled GitHub Actions for {repo_owner}/{repo_name}")
+
+        return {"status": "enabled"}
+
 
 def fork_template_portal(
     new_name: str,

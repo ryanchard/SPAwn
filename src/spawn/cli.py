@@ -204,8 +204,8 @@ def crawl(
             except Exception as e:
                 logger.error(f"Error saving metadata for {file_path}: {e}")
 
-        save_metadata_to_json(metadata, json_dir)
-        logger.info(f"Saved metadata for {json_count} files to JSON")
+        json_path = save_metadata_to_json(metadata, output_dir=json_dir)
+        logger.info(f"Saved metadata for {json_count} files to JSON at {json_path}")
 
     # Get search index from options or config
     index_uuid = search_index or config.globus_search_index
@@ -322,7 +322,7 @@ def extract_file_metadata(
         else:
             # Use save_metadata_to_json function
             try:
-                json_path = save_metadata_to_json(file, metadata, json_dir)
+                json_path = save_metadata_to_json(file, metadata, output_dir=json_dir)
                 print(f"\nMetadata saved to: {json_path}")
             except Exception as e:
                 print(f"\nError saving metadata to JSON: {e}")
@@ -445,6 +445,26 @@ def fork_portal(
     default="main",
     help="Branch to push to",
 )
+@click.option(
+    "--enable-pages/--no-enable-pages",
+    default=False,
+    help="Whether to enable GitHub Pages for the repository",
+)
+@click.option(
+    "--pages-branch",
+    default="main",
+    help="Branch to publish GitHub Pages from (if --enable-pages is used)",
+)
+@click.option(
+    "--pages-path",
+    default="/",
+    help="Directory to publish GitHub Pages from (if --enable-pages is used). Use '/' for root",
+)
+@click.option(
+    "--enable-actions/--no-enable-actions",
+    default=False,
+    help="Whether to enable GitHub Actions for the repository",
+)
 def configure_portal(
     repo_dir: Path,
     index_name: str,
@@ -457,11 +477,18 @@ def configure_portal(
     token: Optional[str],
     commit_message: str,
     branch: str,
+    enable_pages: bool,
+    pages_branch: str,
+    pages_path: str,
+    enable_actions: bool,
 ):
     """
     Configure the static.json file in a Globus template search portal repository.
 
     REPO_DIR is the path to the repository directory.
+
+    This command can also enable GitHub Pages and GitHub Actions for the repository
+    to allow automatic publishing of the portal.
     """
     # Load additional configuration if provided
     additional_config = None
@@ -474,13 +501,14 @@ def configure_portal(
             sys.exit(1)
 
     try:
-        # Validate push parameters
-        if push and (not repo_owner or not repo_name):
+        # Validate parameters
+        if (push or enable_pages or enable_actions) and (not repo_owner or not repo_name):
             logger.error(
-                "--repo-owner and --repo-name are required when --push is used"
+                "--repo-owner and --repo-name are required when --push, --enable-pages, or --enable-actions is used"
             )
             sys.exit(1)
 
+        # Configure static.json
         static_json_path = configure_static_json(
             repo_dir=repo_dir,
             index_name=index_name,
@@ -501,8 +529,32 @@ def configure_portal(
             )
         else:
             print(f"Successfully configured static.json at: {static_json_path}")
+
+        # Enable GitHub Pages if requested
+        if enable_pages:
+            client = GitHubClient(token=token)
+            pages_result = client.enable_github_pages(
+                repo_owner=repo_owner,
+                repo_name=repo_name,
+                branch=pages_branch,
+                path=pages_path,
+            )
+            print(f"Successfully enabled GitHub Pages for {repo_owner}/{repo_name}")
+            if "html_url" in pages_result:
+                print(f"Site URL: {pages_result['html_url']}")
+
+        # Enable GitHub Actions if requested
+        if enable_actions:
+            client = GitHubClient(token=token)
+            client.enable_github_actions(
+                repo_owner=repo_owner,
+                repo_name=repo_name,
+            )
+            print(f"Successfully enabled GitHub Actions for {repo_owner}/{repo_name}")
+            print(f"GitHub Actions workflows can now automatically publish to GitHub Pages")
+
     except Exception as e:
-        logger.error(f"Error configuring static.json: {e}")
+        logger.error(f"Error configuring portal: {e}")
         sys.exit(1)
 
 
@@ -655,11 +707,9 @@ def remote_crawl_cmd(
             ignore_dot_dirs=ignore_dot_dirs,
             wait=wait,
             timeout=timeout,
+            save_json=save_json,
+            json_dir=json_dir,
         )
-
-        print("I am here")
-        print(result)
-        sys.exit(1)
 
         if wait:
             logger.info(f"Crawled {len(result)} files")
@@ -670,24 +720,10 @@ def remote_crawl_cmd(
                     json.dump(result, f, indent=2, default=str)
                 logger.info(f"Saved metadata to {output}")
 
-            # Save metadata to JSON files if requested
+            # If save_json was true, the metadata was already saved on the remote endpoint
+            # We don't need to save it again here
             if save_json:
-                from spawn.metadata import save_metadata_to_json
-
-                logger.info("Saving metadata to JSON files")
-                json_count = 0
-
-                for metadata in result:
-                    try:
-                        file_path = Path(metadata["file_path"])
-                        save_metadata_to_json(file_path, metadata, json_dir)
-                        json_count += 1
-                    except Exception as e:
-                        logger.error(
-                            f"Error saving metadata for {metadata.get('file_path')}: {e}"
-                        )
-
-                logger.info(f"Saved metadata for {json_count} files to JSON")
+                logger.info(f"Metadata was saved to JSON directory on the remote endpoint")
 
             # Publish metadata to Globus Search if requested
             if search_index:
