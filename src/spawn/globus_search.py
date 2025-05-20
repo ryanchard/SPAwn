@@ -129,14 +129,6 @@ class GlobusSearchClient:
 
                 logger.info(response)
 
-                if response.success != "true":
-                    logger.error(
-                        f"Failed to ingest batch: {response.json().get('error', response.text)}"
-                    )
-                    failed_count += len(batch)
-                else:
-                    success_count += len(batch)
-
                 # Add a small delay to avoid rate limiting
                 time.sleep(0.1)
             except Exception as e:
