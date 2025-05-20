@@ -43,7 +43,6 @@ class GlobusSearchClient:
         )
         self.search_client = SearchClient(app=app)
 
-
     def _get_headers(self) -> Dict[str, str]:
         """
         Get headers for Globus Search API requests.

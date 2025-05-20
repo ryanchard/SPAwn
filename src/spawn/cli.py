@@ -214,8 +214,8 @@ def crawl(
         sys.exit(1)
 
     client = GlobusSearchClient(
-                index_uuid=search_index,
-            )
+        index_uuid=search_index,
+    )
 
     # Get visible_to from options or config
     visible_to_list = (
@@ -225,7 +225,7 @@ def crawl(
     # Publish metadata to Globus Search
     logger.info(f"Publishing metadata to Globus Search index: {index_uuid}")
 
-    result = client.publish_metadata(
+    result = publish_metadata(
         metadata=metadata,
         index_uuid=index_uuid,
         visible_to=visible_to_list,
@@ -728,46 +728,6 @@ def remote_crawl_cmd(
         sys.exit(1)
 
 
-@compute.command(name="get-result")
-@click.argument("task_id", type=str)
-@click.option(
-    "--timeout",
-    type=int,
-    default=3600,
-    help="Timeout in seconds for waiting for the task to complete",
-)
-@click.option(
-    "--output",
-    "-o",
-    type=click.Path(dir_okay=False, path_type=Path),
-    help="Path to save the result to",
-)
-def get_result_cmd(
-    task_id: str,
-    timeout: int,
-    output: Optional[Path],
-):
-    """
-    Get the result of a Globus Compute task.
-
-    TASK_ID is the ID of the task to get the result for.
-    """
-    try:
-        result = get_task_result(task_id, timeout=timeout)
-
-        # Save result to file if requested
-        if output:
-            with open(output, "w") as f:
-                json.dump(result, f, indent=2, default=str)
-            logger.info(f"Saved result to {output}")
-        else:
-            # Print result
-            print(json.dumps(result, indent=2, default=str))
-    except Exception as e:
-        logger.error(f"Error getting task result: {e}")
-        sys.exit(1)
-
-
 @cli.group()
 def flow():
     """
@@ -823,7 +783,7 @@ def create_search_index(
 
         # Create the index
         logger.info(f"Creating Globus Search index: {display_name}")
-        
+
         create_result = search_client.create_index(
             display_name=display_name,
             description=description or "",
@@ -833,13 +793,15 @@ def create_search_index(
         # Print the result
         index_id = create_result["id"]
         logger.info(f"Successfully created search index: {index_id}")
-        
+
         print(f"Search Index ID: {index_id}")
         print(f"Display Name: {display_name}")
         print(f"Description: {description or '(No description)'}")
         print(f"Visible To: {', '.join(visible_to_list)}")
-        print("\nYou can use this index ID in your configuration or with the --search-index option.")
-        
+        print(
+            "\nYou can use this index ID in your configuration or with the --search-index option."
+        )
+
     except Exception as e:
         logger.error(f"Error creating search index: {e}")
         sys.exit(1)

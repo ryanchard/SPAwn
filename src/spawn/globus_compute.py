@@ -99,22 +99,23 @@ def remote_crawl_directory(
 
     return metadata_list
 
+
 def register_functions(endpoint_id: str) -> Dict[str, str]:
     """
     Register functions with Globus Compute.
-    
+
     Args:
         endpoint_id: Globus Compute endpoint ID.
-        
+
     Returns:
         Dictionary mapping function names to function IDs.
-    """   
+    """
     # Create Globus Compute client
     gc = Client()
-    
+
     # Register functions
     function_ids = {}
-    
+
     # Register remote_crawl_directory
     remote_crawl_directory_id = gc.register_function(
         remote_crawl_directory,
@@ -123,8 +124,9 @@ def register_functions(endpoint_id: str) -> Dict[str, str]:
         public=False,
     )
     function_ids["remote_crawl_directory"] = remote_crawl_directory_id
-    
+
     return function_ids
+
 
 def remote_crawl(
     endpoint_id: str,
