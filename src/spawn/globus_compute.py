@@ -106,14 +106,76 @@ def remote_crawl_directory(
     if save_json and json_dir:
         try:
             json_dir_path = Path(json_dir)
-            save_metadata_to_json(metadata_dict, json_dir_path)
+            save_metadata_to_json(file_path_or_metadata=metadata_dict, output_dir=json_dir_path)
             print(
                 f"Saved metadata for {len(metadata_dict)} files to JSON in {json_dir}"
             )
+            return str(json_dir_path)
         except Exception as e:
             print(f"Error saving metadata to JSON: {e}")
 
     return metadata_list
+
+
+def ingest_metadata_from_file(
+    metadata_file_path: str,
+    search_index: str,
+    visible_to: Optional[List[str]] = None,
+    batch_size: int = 100,
+    subject_prefix: str = "file://",
+) -> Dict[str, int]:
+    """
+    Ingest metadata from a file into Globus Search.
+
+    This function is designed to be registered with Globus Compute.
+
+    Args:
+        metadata_file_path: Path to the metadata file to ingest.
+        search_index: UUID of the Globus Search index.
+        visible_to: List of Globus Auth identities that can see these entries.
+        batch_size: Number of entries to ingest in a single batch.
+        subject_prefix: Prefix to use for the subject.
+
+    Returns:
+        Dictionary with counts of successful and failed ingest operations.
+    """
+    # Import required modules
+    # These imports are done here to avoid dependency issues
+    # when registering the function with Globus Compute
+    import json
+    import sys
+    import os
+    from pathlib import Path
+
+    # Add the current directory to the path to import spawn modules
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    if current_dir not in sys.path:
+        sys.path.append(current_dir)
+
+    # Import spawn modules
+    from spawn.globus_search import publish_metadata, GlobusSearchClient
+
+    # Load metadata from file
+    try:
+        with open(metadata_file_path, 'r') as f:
+            metadata = json.load(f)
+    except Exception as e:
+        print(f"Error loading metadata from {metadata_file_path}: {e}")
+        return {"success": 0, "failed": 0, "error": str(e)}
+
+    # Publish metadata to Globus Search
+    try:
+        result = publish_metadata(
+            metadata=metadata,
+            index_uuid=search_index,
+            batch_size=batch_size,
+            subject_prefix=subject_prefix,
+            visible_to=visible_to,
+        )
+        return result
+    except Exception as e:
+        print(f"Error publishing metadata to Globus Search: {e}")
+        return {"success": 0, "failed": 0, "error": str(e)}
 
 
 def register_functions(endpoint_id: str) -> Dict[str, str]:
@@ -141,7 +203,70 @@ def register_functions(endpoint_id: str) -> Dict[str, str]:
     )
     function_ids["remote_crawl_directory"] = remote_crawl_directory_id
 
+    # Register ingest_metadata_from_file
+    ingest_metadata_id = gc.register_function(
+        ingest_metadata_from_file,
+        function_name="ingest_metadata_from_file",
+        description="Ingest metadata from a file into Globus Search",
+        public=False,
+    )
+    function_ids["ingest_metadata_from_file"] = ingest_metadata_id
+
     return function_ids
+
+
+def remote_ingest_metadata(
+    endpoint_id: str,
+    metadata_file_path: str,
+    search_index: str,
+    visible_to: Optional[List[str]] = None,
+    batch_size: int = 100,
+    subject_prefix: str = "file://",
+    wait: bool = True,
+    timeout: int = 3600,
+) -> Union[str, Dict[str, int]]:
+    """
+    Ingest metadata from a file into Globus Search using Globus Compute.
+
+    Args:
+        endpoint_id: Globus Compute endpoint ID.
+        metadata_file_path: Path to the metadata file to ingest.
+        search_index: UUID of the Globus Search index.
+        visible_to: List of Globus Auth identities that can see these entries.
+        batch_size: Number of entries to ingest in a single batch.
+        subject_prefix: Prefix to use for the subject.
+        wait: Whether to wait for the task to complete.
+        timeout: Timeout in seconds for waiting for the task to complete.
+
+    Returns:
+        If wait is True, returns the result of the ingest operation.
+        If wait is False, returns the task ID.
+    """
+    # Create Globus Compute client
+    gce = Executor(endpoint_id=endpoint_id)
+
+    # Submit task
+    task = gce.submit(
+        ingest_metadata_from_file,
+        metadata_file_path=metadata_file_path,
+        search_index=search_index,
+        visible_to=visible_to,
+        batch_size=batch_size,
+        subject_prefix=subject_prefix,
+    )
+
+    logger.info(f"Submitted ingest task {task.task_id} to endpoint {endpoint_id}")
+
+    if not wait:
+        return task.task_id
+
+    # Wait for task to complete
+    logger.info(f"Waiting for ingest task {task.task_id} to complete...")
+    result = task.result(timeout=timeout)
+
+    logger.info(f"Ingest task {task.task_id} completed")
+
+    return result
 
 
 def remote_crawl(
