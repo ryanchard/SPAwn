@@ -4,12 +4,14 @@ Directory crawler for SPAwn.
 This module provides functionality for crawling directories and discovering files.
 """
 
-import os
 import logging
 import re
 import time
 from pathlib import Path
-from typing import Dict, Generator, List, Optional, Set, Tuple, Any, Pattern, Union
+from typing import Generator
+from typing import List
+from typing import Optional
+from typing import Set
 
 from tqdm import tqdm
 
@@ -33,7 +35,7 @@ class Crawler:
         polling_rate: Optional[float] = None,
         ignore_dot_dirs: bool = True,
     ):
-        """
+        r"""
         Initialize the crawler.
 
         Args:
@@ -181,7 +183,7 @@ def crawl_directory(
     polling_rate: Optional[float] = None,
     ignore_dot_dirs: bool = True,
 ) -> List[Path]:
-    """
+    r"""
     Crawl a directory and return discovered files.
 
     Args:

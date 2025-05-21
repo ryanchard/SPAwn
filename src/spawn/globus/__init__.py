@@ -11,8 +11,6 @@ from typing import Type
 from spawn.extractors.metadata import MetadataExtractor
 from spawn.extractors.metadata import register_extractor
 
-from .main import cli
-
 logger = logging.getLogger(__name__)
 
 

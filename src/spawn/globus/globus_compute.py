@@ -4,7 +4,6 @@ Globus Compute integration for SPAwn.
 This module provides functionality for remotely crawling directories using Globus Compute.
 """
 
-import json
 import logging
 import os
 import sys
@@ -14,6 +13,22 @@ from typing import Any, Dict, List, Optional, Union
 from globus_compute_sdk import Executor, Client
 
 logger = logging.getLogger(__name__)
+
+
+def _ensure_globus_compute_imports():
+    """Ensure Globus Compute imports are available."""
+    global GLOBUS_COMPUTE_IMPORTS
+    if not GLOBUS_COMPUTE_IMPORTS:
+        try:
+            global globus_compute_sdk
+            import globus_compute_sdk
+
+            GLOBUS_COMPUTE_IMPORTS = True
+        except ImportError:
+            logger.error(
+                "Globus Compute SDK not installed. Run 'pip install globus-compute-sdk'"
+            )
+            raise
 
 
 def remote_crawl_directory(
@@ -51,12 +66,6 @@ def remote_crawl_directory(
     # Import required modules
     # These imports are done here to avoid dependency issues
     # when registering the function with Globus Compute
-    from pathlib import Path
-    import sys
-    import os
-    import re
-    import time
-    import json
 
     # Add the current directory to the path to import spawn modules
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -65,10 +74,11 @@ def remote_crawl_directory(
 
     # Import spawn modules
     from spawn.crawler import crawl_directory
-    from spawn.metadata import extract_metadata, save_metadata_to_json
+    from spawn.extractors.metadata import extract_metadata
 
     # Convert directory path to Path object
     directory = Path(directory_path)
+
 
     # Crawl directory
     files = crawl_directory(
@@ -83,6 +93,7 @@ def remote_crawl_directory(
         ignore_dot_dirs=ignore_dot_dirs,
     )
 
+
     # Extract metadata
     metadata_dict = {}
 
@@ -90,89 +101,17 @@ def remote_crawl_directory(
         try:
             metadata = extract_metadata(file_path)
 
+            # Convert Path objects to strings for JSON serialization
+            metadata["path"] = str(metadata["path"])
+
             # Add file_path as string
             metadata["file_path"] = str(file_path)
 
-            metadata_dict[str(file_path.absolute())] = metadata
+            metadata_list.append(metadata)
         except Exception as e:
             print(f"Error extracting metadata for {file_path}: {e}")
 
-    # Save metadata to JSON if requested
-    if save_json and json_dir:
-        try:
-            json_dir_path = Path(json_dir)
-            json_output_path = save_metadata_to_json(
-                file_path_or_metadata=metadata_dict, output_dir=json_dir_path
-            )
-            print(
-                f"Saved metadata for {len(metadata_dict)} files to JSON in {json_dir}"
-            )
-            return str(json_output_path)
-        except Exception as e:
-            print(f"Error saving metadata to JSON: {e}")
-
-    return metadata_dict
-
-
-def ingest_metadata_from_file(
-    metadata_file_path: str,
-    search_index: str,
-    visible_to: Optional[List[str]] = None,
-    batch_size: int = 100,
-    subject_prefix: str = "file://",
-) -> Dict[str, int]:
-    """
-    Ingest metadata from a file into Globus Search.
-
-    This function is designed to be registered with Globus Compute.
-
-    Args:
-        metadata_file_path: Path to the metadata file to ingest.
-        search_index: UUID of the Globus Search index.
-        visible_to: List of Globus Auth identities that can see these entries.
-        batch_size: Number of entries to ingest in a single batch.
-        subject_prefix: Prefix to use for the subject.
-
-    Returns:
-        Dictionary with counts of successful and failed ingest operations.
-    """
-    # Import required modules
-    # These imports are done here to avoid dependency issues
-    # when registering the function with Globus Compute
-    import json
-    import sys
-    import os
-    from pathlib import Path
-
-    # Add the current directory to the path to import spawn modules
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    if current_dir not in sys.path:
-        sys.path.append(current_dir)
-
-    # Import spawn modules
-    from spawn.globus_search import publish_metadata, GlobusSearchClient
-
-    # Load metadata from file
-    try:
-        with open(metadata_file_path, "r") as f:
-            metadata = json.load(f)
-    except Exception as e:
-        print(f"Error loading metadata from {metadata_file_path}: {e}")
-        return {"success": 0, "failed": 0, "error": str(e)}
-
-    # Publish metadata to Globus Search
-    try:
-        result = publish_metadata(
-            metadata=metadata,
-            index_uuid=search_index,
-            batch_size=batch_size,
-            subject_prefix=subject_prefix,
-            visible_to=visible_to,
-        )
-        return result
-    except Exception as e:
-        print(f"Error publishing metadata to Globus Search: {e}")
-        return {"success": 0, "failed": 0, "error": str(e)}
+    return metadata_list
 
 
 def register_functions(endpoint_id: str) -> Dict[str, str]:
@@ -185,11 +124,14 @@ def register_functions(endpoint_id: str) -> Dict[str, str]:
     Returns:
         Dictionary mapping function names to function IDs.
     """
+    _ensure_globus_compute_imports()
+
     # Create Globus Compute client
-    gc = Client()
+    gc = globus_compute_sdk.Client()
 
     # Register functions
     function_ids = {}
+
 
     # Register remote_crawl_directory
     remote_crawl_directory_id = gc.register_function(
@@ -315,6 +257,8 @@ def remote_crawl(
         If wait is True, returns the list of metadata dictionaries.
         If wait is False, returns the task ID.
     """
+    _ensure_globus_compute_imports()
+
     # Create Globus Compute client
     gce = Executor(endpoint_id=endpoint_id)
 
@@ -565,8 +509,12 @@ def get_task_result(task_id: str, timeout: int = 3600) -> Any:
     Returns:
         The result of the task.
     """
+    _ensure_globus_compute_imports()
+
     # Create Globus Compute client
     gc = Client()
+
+    gc = globus_compute_sdk.Client()
 
     # Get task
     task = gc.get_task(task_id)

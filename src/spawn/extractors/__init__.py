@@ -5,9 +5,8 @@ This package contains metadata extractors for different file types.
 """
 
 import logging
-from typing import List, Type
 
-from spawn.metadata import MetadataExtractor, register_extractor
+from spawn.extractors.metadata import register_extractor
 
 logger = logging.getLogger(__name__)
 

@@ -26,10 +26,10 @@ You can configure Globus Search credentials and settings in the following ways:
 globus:
   # Globus Auth token with search.ingest scope
   auth_token: "your-globus-auth-token"
-  
+
   # Globus Search index UUID
   search_index: "your-search-index-uuid"
-  
+
   # List of Globus Auth identities that can see entries
   visible_to: ["public"]
 ```

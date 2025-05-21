@@ -10,11 +10,13 @@ import os
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Union
+from typing import Any
+from typing import Dict
+from typing import Optional
+from typing import Union
 
 import jinja2
 import requests
-
 from spawn.config import config
 
 logger = logging.getLogger(__name__)

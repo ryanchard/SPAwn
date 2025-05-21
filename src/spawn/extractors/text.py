@@ -7,9 +7,11 @@ This module provides functionality for extracting metadata from text files.
 import logging
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
+from typing import Dict
+from typing import List
 
-from spawn.metadata import MetadataExtractor
+from spawn.extractors.metadata import MetadataExtractor
 
 logger = logging.getLogger(__name__)
 

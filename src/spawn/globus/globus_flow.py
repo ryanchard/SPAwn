@@ -5,16 +5,13 @@ This module provides functionality for creating and running Globus Flows
 to orchestrate the entire process of crawling, indexing, and portal creation.
 """
 
-import json
 import logging
-import os
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-import globus_sdk
-
-from globus_sdk import UserApp, FlowsClient
+# Import these only when needed to avoid dependency issues
+GLOBUS_FLOW_IMPORTS = False
 
 logger = logging.getLogger(__name__)
 
@@ -494,7 +491,7 @@ def create_and_run_flow(
         If wait is False, returns the flow run ID.
     """
     # Import here to avoid circular imports
-    from spawn.globus_compute import register_functions
+    from spawn.globus.globus_compute import register_functions
 
     # Register functions with Globus Compute
     function_ids = register_functions(compute_endpoint_id)

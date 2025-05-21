@@ -41,13 +41,13 @@ You can configure Globus Compute and Flow credentials and settings in the follow
 globus:
   # Globus Auth token
   auth_token: "your-globus-auth-token"
-  
+
   # Globus Compute endpoint ID
   compute_endpoint_id: "your-compute-endpoint-id"
-  
+
   # Globus Flow ID (if you have an existing flow)
   flow_id: "your-flow-id"
-  
+
   # Globus Auth client ID and secret (for creating flows)
   client_id: "your-client-id"
   client_secret: "your-client-secret"

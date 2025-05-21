@@ -5,15 +5,19 @@ This module provides functionality for indexing metadata in Elasticsearch.
 """
 
 import logging
-import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
 
-from elasticsearch import Elasticsearch, helpers
+from elasticsearch import Elasticsearch
+from elasticsearch import helpers
 from tqdm import tqdm
 
 from spawn.config import config
-from spawn.metadata import extract_metadata, save_metadata_to_json
+from spawn.extractors.metadata import extract_metadata
+from spawn.extractors.metadata import save_metadata_to_json
 
 logger = logging.getLogger(__name__)
 

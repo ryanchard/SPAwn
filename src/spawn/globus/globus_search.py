@@ -4,7 +4,6 @@ Globus Search integration for SPAwn.
 This module provides functionality for publishing metadata to Globus Search.
 """
 
-import json
 import logging
 import time
 from pathlib import Path

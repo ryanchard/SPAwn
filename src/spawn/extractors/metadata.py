@@ -7,11 +7,15 @@ This module provides functionality for extracting metadata from files.
 import json
 import logging
 import mimetypes
-import os
-from abc import ABC, abstractmethod
+from abc import ABC
+from abc import abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Type
 
 from spawn.config import config
 
