@@ -189,14 +189,25 @@ class SPAwnFlow:
 
         return self.flow_client
 
-    def create_flow(self) -> str:
+    def create_or_update_flow(self, flow_id: Optional[str] = None) -> str:
         """
         Create a new Globus Flow.
 
+        Args:
+            flow_id: The flow ID. If set, update the flow.
         Returns:
             The ID of the created flow.
         """
         flow_client = self._get_flow_client()
+
+        if flow_id:
+            flow = flow_client.update_flow(
+                flow_id=flow_id,
+                title=self.FLOW_DEFINITION["title"],
+                definition=self.FLOW_DEFINITION["definition"],
+                input_schema=self.FLOW_DEFINITION["input_schema"],
+                description=self.FLOW_DEFINITION["description"],
+            )
 
         # Create flow
         flow = flow_client.create_flow(

@@ -138,6 +138,69 @@ class GitHubClient:
 
         return fork_info
 
+    def create_from_template(
+        self,
+        template_owner: str,
+        template_repo: str,
+        new_name: str,
+        organization: Optional[str] = None,
+        description: Optional[str] = None,
+        private: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Create a new repository from a template repository.
+
+        Args:
+            template_owner: Owner of the template repository.
+            template_repo: Name of the template repository.
+            new_name: Name for the new repository.
+            organization: Organization to create the repository in. If None, creates in the user's account.
+            description: Description for the new repository.
+            private: Whether the new repository should be private.
+
+        Returns:
+            Dictionary with information about the new repository.
+
+        Raises:
+            ValueError: If the repository creation fails.
+        """
+        if not self.token:
+            raise ValueError(
+                "GitHub token is required to create a repository from a template"
+            )
+
+        # GitHub API endpoint for creating a repository from a template
+        template_url = f"{self.api_url}/repos/{template_owner}/{template_repo}/generate"
+
+        # Prepare request data
+        data = {
+            "name": new_name,
+            "private": private,
+        }
+
+        if description:
+            data["description"] = description
+
+        if organization:
+            data["owner"] = organization
+
+        # Set the appropriate Accept header for the template repositories API
+        headers = self._get_headers()
+        headers["Accept"] = "application/vnd.github.baptiste-preview+json"
+
+        # Create repository from template
+        response = requests.post(template_url, headers=headers, json=data)
+
+        if response.status_code != 201:
+            raise ValueError(
+                f"Failed to create repository from template: {response.json().get('message', response.text)}"
+            )
+
+        repo_info = response.json()
+        logger.info(f"Created repository from template: {repo_info['full_name']}")
+
+        return repo_info
+
     def clone_repository(
         self,
         repo_owner: str,
@@ -262,7 +325,8 @@ class GitHubClient:
         self,
         repo_owner: str,
         repo_name: str,
-        branch: str = "main",
+        build_type: str = "workflow",
+        branch: str = "gh-pages",
         path: str = "/",
     ) -> Dict[str, Any]:
         """
@@ -271,7 +335,8 @@ class GitHubClient:
         Args:
             repo_owner: Owner of the repository.
             repo_name: Name of the repository.
-            branch: Branch to publish from.
+            build_type: Build type for GitHub Pages. Use "workflow" for GitHub Actions or "legacy" for branch-based publishing.
+            branch: Branch to publish from. For workflow builds, this is typically 'gh-pages'.
             path: Directory to publish from. Use "/" for root.
 
         Returns:
@@ -286,8 +351,19 @@ class GitHubClient:
         # GitHub API endpoint for Pages
         url = f"{self.api_url}/repos/{repo_owner}/{repo_name}/pages"
 
-        # Prepare request data
-        data = {"source": {"branch": branch, "path": path}}
+        # Prepare request data - GitHub API requires source to be an object
+        data = {
+            "source": {
+                "branch": branch,
+                "path": path,
+            }
+        }
+
+        # Add build_type if using workflow
+        if build_type == "workflow":
+            data["source"]["build_type"] = "workflow"
+        elif build_type != "legacy":
+            raise ValueError("build_type must be either 'workflow' or 'legacy'")
 
         # Enable GitHub Pages
         response = requests.post(url, headers=self._get_headers(), json=data)
@@ -367,44 +443,52 @@ class GitHubClient:
         return {"status": "enabled"}
 
 
-def fork_template_portal(
+def create_template_portal(
     new_name: str,
     description: Optional[str] = None,
     organization: Optional[str] = None,
     token: Optional[str] = None,
     username: Optional[str] = None,
     clone_dir: Optional[Path] = None,
+    private: bool = False,
 ) -> Dict[str, Any]:
     """
-    Fork the Globus template search portal.
+    Create a new search portal from the Globus template search portal.
 
     Args:
-        new_name: Name for the forked repository.
+        new_name: Name for the new repository.
         description: Description for the new repository.
-        organization: Organization to create the fork in. If None, creates in the user's account.
+        organization: Organization to create the repository in. If None, creates in the user's account.
         token: GitHub personal access token. If None, uses the token from config or environment.
         username: GitHub username. If None, uses the username from config or environment.
         clone_dir: Directory to clone the repository into. If None, doesn't clone the repository.
+        private: Whether the new repository should be private.
 
     Returns:
-        Dictionary with information about the forked repository and the path to the cloned repository.
+        Dictionary with information about the new repository and the path to the cloned repository.
     """
     # Create GitHub client
     client = GitHubClient(token=token, username=username)
 
-    # Fork repository
-    fork_info = client.create_fork(
-        repo_owner="globus",
-        repo_name="template-search-portal",
+    # Create repository from template
+    repo_info = client.create_from_template(
+        template_owner="globus",
+        template_repo="template-search-portal",
         new_name=new_name,
         organization=organization,
         description=description,
+        private=private,
     )
 
     result = {
-        "repository": fork_info,
+        "repository": repo_info,
         "clone_path": None,
     }
+
+    # Give it a couple of seconds to create the template
+    import time
+
+    time.sleep(2)
 
     # Clone repository if requested
     if clone_dir is not None:

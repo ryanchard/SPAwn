@@ -18,7 +18,7 @@ import click
 
 from spawn.config import config, load_config
 from spawn.crawler import crawl_directory
-from spawn.github import fork_template_portal, configure_static_json
+from spawn.github import create_template_portal, configure_static_json
 from spawn.globus_compute import (
     remote_crawl,
     remote_ingest_metadata,
@@ -384,7 +384,7 @@ def fork_portal(
     Requires a GitHub personal access token with 'repo' scope.
     """
     try:
-        result = fork_template_portal(
+        result = create_template_portal(
             new_name=name,
             description=description,
             organization=organization,
@@ -1047,7 +1047,11 @@ def create_search_index(
 
 
 @flow.command(name="create")
-def create_flow_cmd():
+@click.option(
+    "--flow-id",
+    help="Globus Flow ID. If set, the flow is updated.",
+)
+def create_or_update_flow_cmd(flow_id: Optional[str]):
     """
     Create a new Globus Flow for SPAwn.
     """
