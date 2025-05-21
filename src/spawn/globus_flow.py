@@ -25,88 +25,153 @@ class SPAwnFlow:
     FLOW_DEFINITION = {
         "title": "SPAwn Flow",
         "description": "A flow to crawl a directory, publish metadata to Globus Search, and create a portal",
-        "input_schema": {},
-        #     "type": "object",
-        #     "properties": {
-        #         "compute_endpoint_id": {
-        #             "type": "string",
-        #             "description": "Globus Compute endpoint ID",
-        #         },
-        #         "directory_path": {
-        #             "type": "string",
-        #             "description": "Path to the directory to crawl",
-        #         },
-        #         "search_index": {
-        #             "type": "string",
-        #             "description": "Globus Search index UUID",
-        #         },
-        #         "portal_name": {
-        #             "type": "string",
-        #             "description": "Name for the portal repository",
-        #         },
-        #         "portal_title": {
-        #             "type": "string",
-        #             "description": "Title for the portal",
-        #         },
-        #         "portal_subtitle": {
-        #             "type": "string",
-        #             "description": "Subtitle for the portal",
-        #         },
-        #         "github_token": {
-        #             "type": "string",
-        #             "description": "GitHub personal access token",
-        #         },
-        #         "github_username": {"type": "string", "description": "GitHub username"},
-        #         "exclude_patterns": {
-        #             "type": "array",
-        #             "items": {"type": "string"},
-        #             "description": "Glob patterns to exclude from crawling",
-        #         },
-        #         "include_patterns": {
-        #             "type": "array",
-        #             "items": {"type": "string"},
-        #             "description": "Glob patterns to include in crawling",
-        #         },
-        #         "exclude_regex": {
-        #             "type": "array",
-        #             "items": {"type": "string"},
-        #             "description": "Regex patterns to exclude from crawling",
-        #         },
-        #         "include_regex": {
-        #             "type": "array",
-        #             "items": {"type": "string"},
-        #             "description": "Regex patterns to include in crawling",
-        #         },
-        #         "max_depth": {
-        #             "type": "integer",
-        #             "description": "Maximum depth to crawl",
-        #         },
-        #         "follow_symlinks": {
-        #             "type": "boolean",
-        #             "description": "Whether to follow symbolic links",
-        #         },
-        #         "polling_rate": {
-        #             "type": "number",
-        #             "description": "Time in seconds to wait between file operations",
-        #         },
-        #         "ignore_dot_dirs": {
-        #             "type": "boolean",
-        #             "description": "Whether to ignore directories starting with a dot",
-        #         },
-        #         "visible_to": {
-        #             "type": "array",
-        #             "items": {"type": "string"},
-        #             "description": "Globus Auth identities that can see entries",
-        #         },
-        #     },
-        #     "required": [
-        #         "compute_endpoint_id",
-        #         "directory_path",
-        #         "search_index",
-        #         "portal_name",
-        #         "portal_title",
-        #     ],
-        # },
+        "input_schema": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "title": "SPAwn Flow Input Schema",
+            "description": "Input schema for the SPAwn Flow that crawls a directory, publishes metadata to Globus Search, and creates a portal",
+            "type": "object",
+            "required": [
+                "compute_endpoint_id",
+                "compute_crawl_function_id",
+                "compute_ingest_function_id",
+                "compute_create_portal_function_id",
+                "directory_path",
+                "search_index",
+                "portal_name",
+                "portal_title",
+            ],
+            "properties": {
+                "compute_endpoint_id": {
+                    "type": "string",
+                    "description": "Globus Compute endpoint ID",
+                    "default": "9fbce794-993e-47a7-85d0-10b04b18d9db",
+                },
+                "compute_crawl_function_id": {
+                    "type": "string",
+                    "description": "Globus Compute function ID for remote_crawl_directory",
+                    "default": "68e33da5-7be4-4252-8814-bd3a487468e1",
+                },
+                "compute_ingest_function_id": {
+                    "type": "string",
+                    "description": "Globus Compute function ID for remote_ingest_metadata_from_file",
+                    "default": "f7e36449-2466-41b3-accc-9b8bfab80c00",
+                },
+                "compute_create_portal_function_id": {
+                    "type": "string",
+                    "description": "Globus Compute function ID for remote_create_portal",
+                    "default": "4f9c82e6-54fe-4625-ac49-eeeeea48d132",
+                },
+                "directory_path": {
+                    "type": "string",
+                    "description": "Path to the directory to crawl",
+                    "default": "/Users/ryan/src/test/",
+                },
+                "search_index": {
+                    "type": "string",
+                    "description": "Globus Search index UUID",
+                    "default": "e263b547-bdff-4d7a-83f0-f50a05f97771",
+                },
+                "portal_name": {
+                    "type": "string",
+                    "description": "Name for the portal repository",
+                    "default": "SPAwned-1",
+                },
+                "portal_title": {
+                    "type": "string",
+                    "description": "Title for the portal",
+                    "default": "spawn-portal",
+                },
+                "portal_subtitle": {
+                    "type": "string",
+                    "description": "Subtitle for the portal",
+                    "default": "A search portal",
+                },
+                "enable_pages": {
+                    "type": "boolean",
+                    "description": "Whether GitHub Pages should be enabled on the portal",
+                    "default": True,
+                },
+                "enable_actions": {
+                    "type": "boolean",
+                    "description": "Whether GitHub Actions should be enabled on the portal",
+                    "default": True,
+                },
+                "github_token": {
+                    "type": "string",
+                    "description": "GitHub personal access token",
+                },
+                "github_username": {
+                    "type": "string",
+                    "description": "GitHub username",
+                    "default": "ryanchard",
+                },
+                "exclude_patterns": {
+                    "type": "array",
+                    "description": "Glob patterns to exclude from crawling",
+                    "items": {"type": "string"},
+                    "default": [],
+                },
+                "include_patterns": {
+                    "type": "array",
+                    "description": "Glob patterns to include in crawling",
+                    "items": {"type": "string"},
+                    "default": [],
+                },
+                "exclude_regex": {
+                    "type": "array",
+                    "description": "Regex patterns to exclude from crawling",
+                    "items": {"type": "string"},
+                    "default": [],
+                },
+                "include_regex": {
+                    "type": "array",
+                    "description": "Regex patterns to include in crawling",
+                    "items": {"type": "string"},
+                    "default": [],
+                },
+                "max_depth": {
+                    "type": "integer",
+                    "description": "Maximum depth to crawl",
+                    "default": 3,
+                },
+                "batch_size": {
+                    "type": "integer",
+                    "description": "The size of batches to ingest to Search",
+                    "default": 100,
+                },
+                "follow_symlinks": {
+                    "type": "boolean",
+                    "description": "Whether to follow symbolic links",
+                    "default": False,
+                },
+                "polling_rate": {
+                    "type": "number",
+                    "description": "Time in seconds to wait between file operations",
+                    "default": 1,
+                },
+                "ignore_dot_dirs": {
+                    "type": "boolean",
+                    "description": "Whether to ignore directories starting with a dot",
+                    "default": True,
+                },
+                "visible_to": {
+                    "type": "array",
+                    "description": "Globus Auth identities that can see entries",
+                    "items": {"type": "string"},
+                    "default": ["public"],
+                },
+                "save_json": {
+                    "type": "boolean",
+                    "description": "Whether to save metadata to a JSON file",
+                    "default": True,
+                },
+                "json_dir": {
+                    "type": "string",
+                    "description": "Where to save JSON output",
+                    "default": "/tmp/spawn_test/flow/",
+                },
+            },
+        },
         "definition": {
             "StartAt": "CrawlDirectory",
             "States": {
