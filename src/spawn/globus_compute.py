@@ -208,7 +208,7 @@ def register_functions(endpoint_id: str) -> Dict[str, str]:
         public=False,
     )
     function_ids["ingest_metadata_from_file"] = ingest_metadata_id
-    
+
     # Register remote_create_portal
     remote_create_portal_id = gc.register_function(
         remote_create_portal,
@@ -368,9 +368,9 @@ def remote_create_portal(
 ) -> Dict[str, Any]:
     """
     Create a Globus search portal by forking, cloning, configuring, and pushing the repository.
-    
+
     This function is designed to be registered with Globus Compute.
-    
+
     Args:
         new_name: Name for the forked repository.
         index_name: UUID of the Globus Search index.
@@ -385,7 +385,7 @@ def remote_create_portal(
         enable_actions: Whether to enable GitHub Actions for the repository.
         pages_branch: Branch to publish GitHub Pages from.
         pages_path: Directory to publish GitHub Pages from. Use "/" for root.
-        
+
     Returns:
         Dictionary with information about the created portal.
     """
@@ -397,19 +397,19 @@ def remote_create_portal(
     import sys
     import tempfile
     from pathlib import Path
-    
+
     # Add the current directory to the path to import spawn modules
     current_dir = os.path.dirname(os.path.abspath(__file__))
     if current_dir not in sys.path:
         sys.path.append(current_dir)
-    
+
     # Import spawn modules
     from spawn.github import fork_template_portal, configure_static_json, GitHubClient
-    
+
     # Step 1: Fork the template portal
     with tempfile.TemporaryDirectory() as temp_dir:
         clone_dir = Path(temp_dir) / new_name
-        
+
         # Fork and clone the repository
         fork_result = fork_template_portal(
             new_name=new_name,
@@ -419,7 +419,7 @@ def remote_create_portal(
             username=username,
             clone_dir=clone_dir,
         )
-        
+
         # Get repository owner
         owner = organization or username
         if not owner:
@@ -427,7 +427,7 @@ def remote_create_portal(
             owner = fork_result["repository"].get("owner", {}).get("login")
             if not owner:
                 raise ValueError("Could not determine repository owner")
-        
+
         # Step 2: Configure the portal
         static_json_path = configure_static_json(
             repo_dir=clone_dir,
@@ -443,11 +443,11 @@ def remote_create_portal(
             commit_message="Configure portal",
             branch="main",
         )
-        
+
         # Step 3: Enable GitHub Pages and Actions if requested
         if enable_pages or enable_actions:
             client = GitHubClient(token=token, username=username)
-            
+
             if enable_pages:
                 pages_result = client.enable_github_pages(
                     repo_owner=owner,
@@ -455,13 +455,13 @@ def remote_create_portal(
                     branch=pages_branch,
                     path=pages_path,
                 )
-            
+
             if enable_actions:
                 actions_result = client.enable_github_actions(
                     repo_owner=owner,
                     repo_name=new_name,
                 )
-        
+
         # Return information about the created portal
         result = {
             "repository": fork_result["repository"],
@@ -469,7 +469,7 @@ def remote_create_portal(
             "repository_url": f"https://github.com/{owner}/{new_name}",
             "index_name": index_name,
         }
-        
+
         return result
 
 
@@ -493,7 +493,7 @@ def create_portal_remotely(
 ) -> Union[str, Dict[str, Any]]:
     """
     Create a Globus search portal remotely using Globus Compute.
-    
+
     Args:
         endpoint_id: Globus Compute endpoint ID.
         new_name: Name for the forked repository.
@@ -511,14 +511,14 @@ def create_portal_remotely(
         pages_path: Directory to publish GitHub Pages from. Use "/" for root.
         wait: Whether to wait for the task to complete.
         timeout: Timeout in seconds for waiting for the task to complete.
-        
+
     Returns:
         If wait is True, returns information about the created portal.
         If wait is False, returns the task ID.
     """
     # Create Globus Compute client
     gce = Executor(endpoint_id=endpoint_id)
-    
+
     # Submit task
     task = gce.submit(
         remote_create_portal,
@@ -536,18 +536,20 @@ def create_portal_remotely(
         pages_branch=pages_branch,
         pages_path=pages_path,
     )
-    
-    logger.info(f"Submitted portal creation task {task.task_id} to endpoint {endpoint_id}")
-    
+
+    logger.info(
+        f"Submitted portal creation task {task.task_id} to endpoint {endpoint_id}"
+    )
+
     if not wait:
         return task.task_id
-    
+
     # Wait for task to complete
     logger.info(f"Waiting for portal creation task {task.task_id} to complete...")
     result = task.result(timeout=timeout)
-    
+
     logger.info(f"Portal creation task {task.task_id} completed")
-    
+
     return result
 
 

@@ -905,7 +905,7 @@ def create_portal_cmd(
 ):
     """
     Create a Globus search portal remotely using Globus Compute.
-    
+
     This command forks the Globus template search portal, configures it with the specified
     Globus Search index, and optionally enables GitHub Pages and GitHub Actions.
     All operations are performed remotely on a Globus Compute endpoint.
@@ -915,7 +915,7 @@ def create_portal_cmd(
     if not endpoint:
         logger.error("No Globus Compute endpoint ID provided")
         sys.exit(1)
-    
+
     # Load additional configuration if provided
     additional_config = None
     if config_file:
@@ -925,14 +925,14 @@ def create_portal_cmd(
         except Exception as e:
             logger.error(f"Error loading configuration file: {e}")
             sys.exit(1)
-    
+
     # Get GitHub credentials from options or config
     github_token = token or config.github_token
     github_username = username or config.github_username
-    
+
     try:
         logger.info(f"Creating portal {name} remotely on endpoint {endpoint}")
-        
+
         result = create_portal_remotely(
             endpoint_id=endpoint,
             new_name=name,
@@ -951,7 +951,7 @@ def create_portal_cmd(
             wait=wait,
             timeout=timeout,
         )
-        
+
         if wait:
             logger.info(f"Portal creation completed")
             print(f"Repository URL: {result['repository_url']}")
@@ -961,7 +961,7 @@ def create_portal_cmd(
         else:
             logger.info(f"Task ID: {result}")
             print(f"Task ID: {result}")
-            
+
     except Exception as e:
         logger.error(f"Error creating portal: {e}")
         sys.exit(1)
