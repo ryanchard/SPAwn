@@ -10,6 +10,7 @@ This file has been refactored. CLI commands have been moved to submodules:
 """
 
 import logging
+import json
 import sys
 from pathlib import Path
 from typing import List
@@ -23,15 +24,17 @@ from globus_sdk import UserApp
 from spawn.config import config
 from spawn.config import load_config
 from spawn.crawler import crawl_directory
-from spawn.extractors.metadata import extract_metadata
-from spawn.globus.globus_compute import get_task_result
-from spawn.globus.globus_compute import register_functions
-from spawn.globus.globus_compute import remote_crawl
-from spawn.globus.globus_flow import SPAwnFlow
-from spawn.globus.globus_search import GlobusSearchClient
-from spawn.globus.globus_search import publish_metadata
-from spawn.utils.github import configure_static_json
-from spawn.utils.github import fork_template_portal
+from spawn.github import create_template_portal, configure_static_json
+from spawn.globus_compute import (
+    remote_crawl,
+    remote_ingest_metadata,
+    register_functions,
+    get_task_result,
+    create_portal_remotely,
+)
+from spawn.globus_flow import create_and_run_flow, SPAwnFlow
+from spawn.globus_search import publish_metadata, GlobusSearchClient
+from spawn.metadata import extract_metadata
 
 # Configure logging
 logging.basicConfig(
@@ -201,8 +204,7 @@ def crawl(
 
     # Save metadata to JSON if requested
     if save_json:
-        from spawn.extractors.metadata import extract_metadata
-        from spawn.extractors.metadata import save_metadata_to_json
+        from spawn.metadata import extract_metadata, save_metadata_to_json
 
         logger.info("Saving metadata to JSON files")
         json_count = 0
@@ -214,22 +216,18 @@ def crawl(
             except Exception as e:
                 logger.error(f"Error saving metadata for {file_path}: {e}")
 
-        save_metadata_to_json(metadata, json_dir)
-        logger.info(f"Saved metadata for {json_count} files to JSON")
+        json_path = save_metadata_to_json(metadata, output_dir=json_dir)
+        logger.info(f"Saved metadata for {json_count} files to JSON at {json_path}")
 
     # Get search index from options or config
     index_uuid = search_index or config.globus_search_index
     if not index_uuid:
         logger.error("No Globus Search index UUID provided")
-        return
+        sys.exit(1)
 
-    # Get a Globus Auth token for Search
-
-    app = UserApp("SPAwn CLI App", client_id="367628a1-4b6a-4176-82bd-422f071d1adc")
-    app.add_scope_requirements(
-        {"search": [globus_sdk.scopes.SearchScopes.make_mutable("all")]}
+    client = GlobusSearchClient(
+        index_uuid=search_index,
     )
-    search_client = SearchClient(app=app)
 
     # Get visible_to from options or config
     visible_to_list = (
@@ -242,7 +240,6 @@ def crawl(
     result = publish_metadata(
         metadata=metadata,
         index_uuid=index_uuid,
-        search_client=search_client,
         visible_to=visible_to_list,
     )
 
@@ -256,10 +253,6 @@ def crawl(
 @click.option(
     "--search-index",
     help="Globus Search index UUID",
-)
-@click.option(
-    "--auth-token",
-    help="Globus Auth token with search.ingest scope",
 )
 def get_entry(
     subject: Optional[str],
@@ -277,18 +270,11 @@ def get_entry(
         logger.error("No Globus Search index UUID provided")
         sys.exit(1)
 
-    # Get auth token from options or config
-    token = auth_token or config.globus_auth_token
-
-    # Create Globus Search client
-    client = GlobusSearchClient(
-        index_uuid=index_uuid,
-        auth_token=token,
-    )
+    client = GlobusSearchClient(index_uuid=index_uuid)
 
     if subject:
         # Get entry by subject
-        entry = client.get_entry(subject)
+        entry = client.get_entry(index_uuid, subject)
 
         if entry:
             import json
@@ -348,7 +334,7 @@ def extract_file_metadata(
         else:
             # Use save_metadata_to_json function
             try:
-                json_path = save_metadata_to_json(file, metadata, json_dir)
+                json_path = save_metadata_to_json(file, metadata, output_dir=json_dir)
                 print(f"\nMetadata saved to: {json_path}")
             except Exception as e:
                 print(f"\nError saving metadata to JSON: {e}")
@@ -404,7 +390,7 @@ def fork_portal(
     Requires a GitHub personal access token with 'repo' scope.
     """
     try:
-        result = fork_template_portal(
+        result = create_template_portal(
             new_name=name,
             description=description,
             organization=organization,
@@ -427,7 +413,7 @@ def fork_portal(
     "repo_dir", type=click.Path(exists=True, file_okay=False, path_type=Path)
 )
 @click.option(
-    "--index-name",
+    "--search-index",
     required=True,
     help="UUID of the Globus Search index",
 )
@@ -471,9 +457,29 @@ def fork_portal(
     default="main",
     help="Branch to push to",
 )
+@click.option(
+    "--enable-pages/--no-enable-pages",
+    default=False,
+    help="Whether to enable GitHub Pages for the repository",
+)
+@click.option(
+    "--pages-branch",
+    default="main",
+    help="Branch to publish GitHub Pages from (if --enable-pages is used)",
+)
+@click.option(
+    "--pages-path",
+    default="/",
+    help="Directory to publish GitHub Pages from (if --enable-pages is used). Use '/' for root",
+)
+@click.option(
+    "--enable-actions/--no-enable-actions",
+    default=False,
+    help="Whether to enable GitHub Actions for the repository",
+)
 def configure_portal(
     repo_dir: Path,
-    index_name: str,
+    search_index: str,
     title: Optional[str],
     subtitle: Optional[str],
     config_file: Optional[Path],
@@ -483,11 +489,18 @@ def configure_portal(
     token: Optional[str],
     commit_message: str,
     branch: str,
+    enable_pages: bool,
+    pages_branch: str,
+    pages_path: str,
+    enable_actions: bool,
 ):
     """
     Configure the static.json file in a Globus template search portal repository.
 
     REPO_DIR is the path to the repository directory.
+
+    This command can also enable GitHub Pages and GitHub Actions for the repository
+    to allow automatic publishing of the portal.
     """
     # Load additional configuration if provided
     additional_config = None
@@ -500,16 +513,19 @@ def configure_portal(
             sys.exit(1)
 
     try:
-        # Validate push parameters
-        if push and (not repo_owner or not repo_name):
+        # Validate parameters
+        if (push or enable_pages or enable_actions) and (
+            not repo_owner or not repo_name
+        ):
             logger.error(
-                "--repo-owner and --repo-name are required when --push is used"
+                "--repo-owner and --repo-name are required when --push, --enable-pages, or --enable-actions is used"
             )
             sys.exit(1)
 
+        # Configure static.json
         static_json_path = configure_static_json(
             repo_dir=repo_dir,
-            index_name=index_name,
+            search_index=search_index,
             portal_title=title,
             portal_subtitle=subtitle,
             additional_config=additional_config,
@@ -527,8 +543,34 @@ def configure_portal(
             )
         else:
             print(f"Successfully configured static.json at: {static_json_path}")
+
+        # Enable GitHub Pages if requested
+        if enable_pages:
+            client = GitHubClient(token=token)
+            pages_result = client.enable_github_pages(
+                repo_owner=repo_owner,
+                repo_name=repo_name,
+                branch=pages_branch,
+                path=pages_path,
+            )
+            print(f"Successfully enabled GitHub Pages for {repo_owner}/{repo_name}")
+            if "html_url" in pages_result:
+                print(f"Site URL: {pages_result['html_url']}")
+
+        # Enable GitHub Actions if requested
+        if enable_actions:
+            client = GitHubClient(token=token)
+            client.enable_github_actions(
+                repo_owner=repo_owner,
+                repo_name=repo_name,
+            )
+            print(f"Successfully enabled GitHub Actions for {repo_owner}/{repo_name}")
+            print(
+                f"GitHub Actions workflows can now automatically publish to GitHub Pages"
+            )
+
     except Exception as e:
-        logger.error(f"Error configuring static.json: {e}")
+        logger.error(f"Error configuring portal: {e}")
         sys.exit(1)
 
 
@@ -608,10 +650,6 @@ def compute():
     help="Globus Search index UUID to publish metadata to",
 )
 @click.option(
-    "--auth-token",
-    help="Globus Auth token with search.ingest scope",
-)
-@click.option(
     "--visible-to",
     multiple=True,
     help="Globus Auth identities that can see entries (can be used multiple times)",
@@ -685,10 +723,17 @@ def remote_crawl_cmd(
             ignore_dot_dirs=ignore_dot_dirs,
             wait=wait,
             timeout=timeout,
+            save_json=save_json,
+            json_dir=json_dir,
         )
 
+        print(result)
+
         if wait:
-            logger.info(f"Crawled {len(result)} files")
+            if save_json:
+                logger.info(f"Crawled {directory} and saved to {json_dir}")
+            else:
+                logger.info(f"Crawled {len(result)} files")
 
             # Save metadata to file if requested
             if output:
@@ -696,24 +741,12 @@ def remote_crawl_cmd(
                     json.dump(result, f, indent=2, default=str)
                 logger.info(f"Saved metadata to {output}")
 
-            # Save metadata to JSON files if requested
+            # If save_json was true, the metadata was already saved on the remote endpoint
+            # We don't need to save it again here
             if save_json:
-                from spawn.extractors.metadata import save_metadata_to_json
-
-                logger.info("Saving metadata to JSON files")
-                json_count = 0
-
-                for metadata in result:
-                    try:
-                        file_path = Path(metadata["file_path"])
-                        save_metadata_to_json(file_path, metadata, json_dir)
-                        json_count += 1
-                    except Exception as e:
-                        logger.error(
-                            f"Error saving metadata for {metadata.get('file_path')}: {e}"
-                        )
-
-                logger.info(f"Saved metadata for {json_count} files to JSON")
+                logger.info(
+                    f"Metadata was saved to JSON directory on the remote endpoint"
+                )
 
             # Publish metadata to Globus Search if requested
             if search_index:
@@ -721,36 +754,59 @@ def remote_crawl_cmd(
                     f"Publishing metadata to Globus Search index: {search_index}"
                 )
 
-                # Convert metadata to GMetaEntries
-                from spawn.globus.globus_search import metadata_to_gmeta_entry
+                # If we have a metadata file, use remote_ingest_metadata to ingest it
+                if save_json and json_dir:
+                    # The metadata file path on the remote endpoint
+                    metadata_file_path = str(Path(json_dir) / "SPAwn_metadata.json")
 
-                entries = []
-                for metadata in result:
-                    try:
-                        file_path = Path(metadata["file_path"])
-                        entry = metadata_to_gmeta_entry(
-                            file_path=file_path,
-                            metadata=metadata,
-                            visible_to=list(visible_to) if visible_to else None,
-                        )
-                        entries.append(entry)
-                    except Exception as e:
-                        logger.error(
-                            f"Error converting metadata for {metadata.get('file_path')}: {e}"
-                        )
+                    logger.info(f"Ingesting metadata from file: {metadata_file_path}")
 
-                # Create Globus Search client
-                client = GlobusSearchClient(
-                    index_uuid=search_index,
-                    auth_token=auth_token,
-                )
+                    # Use remote_ingest_metadata to ingest the metadata file
 
-                # Ingest entries
-                result = client.ingest_entries(entries)
+                    ingest_result = remote_ingest_metadata(
+                        endpoint_id=endpoint,
+                        metadata_file_path=metadata_file_path,
+                        search_index=search_index,
+                        visible_to=list(visible_to) if visible_to else None,
+                        wait=True,
+                        timeout=timeout,
+                    )
 
-                logger.info(
-                    f"Published {result['success']} entries, failed to publish {result['failed']} entries"
-                )
+                    logger.info(
+                        f"Published {ingest_result.get('success', 0)} entries, failed to publish {ingest_result.get('failed', 0)} entries"
+                    )
+                else:
+                    # We have the metadata in memory, so convert it to GMetaEntries and ingest it directly
+                    from spawn.globus_search import metadata_to_gmeta_entry
+
+                    logger.info("Converting metadata to GMetaEntries")
+
+                    entries = []
+                    for metadata in result:
+                        try:
+                            file_path = Path(metadata["file_path"])
+                            entry = metadata_to_gmeta_entry(
+                                file_path=file_path,
+                                metadata=metadata,
+                                visible_to=list(visible_to) if visible_to else None,
+                            )
+                            entries.append(entry)
+                        except Exception as e:
+                            logger.error(
+                                f"Error converting metadata for {metadata.get('file_path')}: {e}"
+                            )
+
+                    # Create Globus Search client
+                    client = GlobusSearchClient(
+                        index_uuid=search_index,
+                    )
+
+                    # Ingest entries
+                    ingest_result = client.ingest_entries(entries)
+
+                    logger.info(
+                        f"Published {ingest_result['success']} entries, failed to publish {ingest_result['failed']} entries"
+                    )
         else:
             logger.info(f"Task ID: {result}")
             print(f"Task ID: {result}")
@@ -759,43 +815,161 @@ def remote_crawl_cmd(
         sys.exit(1)
 
 
-@compute.command(name="get-result")
-@click.argument("task_id", type=str)
+@compute.command(name="create-portal")
+@click.option(
+    "--endpoint-id",
+    required=True,
+    help="Globus Compute endpoint ID",
+)
+@click.option(
+    "--name",
+    required=True,
+    help="Name for the forked repository",
+)
+@click.option(
+    "--search-index",
+    required=True,
+    help="UUID of the Globus Search index",
+)
+@click.option(
+    "--description",
+    help="Description for the new repository",
+)
+@click.option(
+    "--organization",
+    help="Organization to create the fork in",
+)
+@click.option(
+    "--token",
+    help="GitHub personal access token (overrides config and environment)",
+)
+@click.option(
+    "--username",
+    help="GitHub username (overrides config and environment)",
+)
+@click.option(
+    "--title",
+    help="Title for the portal",
+)
+@click.option(
+    "--subtitle",
+    help="Subtitle for the portal",
+)
+@click.option(
+    "--config-file",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Path to additional configuration JSON file",
+)
+@click.option(
+    "--enable-pages/--no-enable-pages",
+    default=False,
+    help="Whether to enable GitHub Pages for the repository",
+)
+@click.option(
+    "--enable-actions/--no-enable-actions",
+    default=False,
+    help="Whether to enable GitHub Actions for the repository",
+)
+@click.option(
+    "--pages-branch",
+    default="main",
+    help="Branch to publish GitHub Pages from (if --enable-pages is used)",
+)
+@click.option(
+    "--pages-path",
+    default="/",
+    help="Directory to publish GitHub Pages from (if --enable-pages is used). Use '/' for root",
+)
+@click.option(
+    "--wait/--no-wait",
+    default=True,
+    help="Whether to wait for the task to complete",
+)
 @click.option(
     "--timeout",
     type=int,
     default=3600,
     help="Timeout in seconds for waiting for the task to complete",
 )
-@click.option(
-    "--output",
-    "-o",
-    type=click.Path(dir_okay=False, path_type=Path),
-    help="Path to save the result to",
-)
-def get_result_cmd(
-    task_id: str,
+def create_portal_cmd(
+    endpoint_id: str,
+    name: str,
+    search_index: str,
+    description: Optional[str],
+    organization: Optional[str],
+    token: Optional[str],
+    username: Optional[str],
+    title: Optional[str],
+    subtitle: Optional[str],
+    config_file: Optional[Path],
+    enable_pages: bool,
+    enable_actions: bool,
+    pages_branch: str,
+    pages_path: str,
+    wait: bool,
     timeout: int,
-    output: Optional[Path],
 ):
     """
-    Get the result of a Globus Compute task.
+    Create a Globus search portal remotely using Globus Compute.
 
-    TASK_ID is the ID of the task to get the result for.
+    This command forks the Globus template search portal, configures it with the specified
+    Globus Search index, and optionally enables GitHub Pages and GitHub Actions.
+    All operations are performed remotely on a Globus Compute endpoint.
     """
-    try:
-        result = get_task_result(task_id, timeout=timeout)
+    # Use command-line options or fall back to config values
+    endpoint = endpoint_id or config.globus_compute_endpoint_id
+    if not endpoint:
+        logger.error("No Globus Compute endpoint ID provided")
+        sys.exit(1)
 
-        # Save result to file if requested
-        if output:
-            with open(output, "w") as f:
-                json.dump(result, f, indent=2, default=str)
-            logger.info(f"Saved result to {output}")
-        else:
-            # Print result
+    # Load additional configuration if provided
+    additional_config = None
+    if config_file:
+        try:
+            with open(config_file, "r") as f:
+                additional_config = json.load(f)
+        except Exception as e:
+            logger.error(f"Error loading configuration file: {e}")
+            sys.exit(1)
+
+    # Get GitHub credentials from options or config
+    github_token = token or config.github_token
+    github_username = username or config.github_username
+
+    try:
+        logger.info(f"Creating portal {name} remotely on endpoint {endpoint}")
+
+        result = create_portal_remotely(
+            endpoint_id=endpoint,
+            new_name=name,
+            search_index=search_index,
+            description=description,
+            organization=organization,
+            token=github_token,
+            username=github_username,
+            portal_title=title,
+            portal_subtitle=subtitle,
+            additional_config=additional_config,
+            enable_pages=enable_pages,
+            enable_actions=enable_actions,
+            pages_branch=pages_branch,
+            pages_path=pages_path,
+            wait=wait,
+            timeout=timeout,
+        )
+
+        if wait:
+            logger.info(f"Portal creation completed")
+            print(f"Repository URL: {result['repository_url']}")
+            if enable_pages:
+                print(f"Portal URL: {result['portal_url']}")
             print(json.dumps(result, indent=2, default=str))
+        else:
+            logger.info(f"Task ID: {result}")
+            print(f"Task ID: {result}")
+
     except Exception as e:
-        logger.error(f"Error getting task result: {e}")
+        logger.error(f"Error creating portal: {e}")
         sys.exit(1)
 
 
@@ -807,33 +981,90 @@ def flow():
     pass
 
 
+@cli.group()
+def search():
+    """
+    Globus Search operations.
+    """
+    pass
+
+
+@search.command(name="create-index")
+@click.option(
+    "--display-name",
+    required=True,
+    help="Display name for the search index",
+)
+@click.option(
+    "--description",
+    help="Description for the search index",
+)
+@click.option(
+    "--visible-to",
+    multiple=True,
+    help="Globus Auth identities that can see this index (can be used multiple times)",
+)
+def create_search_index(
+    display_name: str,
+    description: Optional[str],
+    visible_to: List[str],
+):
+    """
+    Create a new Globus Search index.
+
+    Creates a new search index in Globus Search that can be used for indexing metadata.
+    Requires a Globus Auth token with the 'search.create_index' scope.
+    """
+    try:
+        # Get a Globus Auth token for Search
+        app = UserApp("SPAwn CLI App", client_id="367628a1-4b6a-4176-82bd-422f071d1adc")
+        app.add_scope_requirements(
+            {"search": [globus_sdk.scopes.SearchScopes.make_mutable("all")]}
+        )
+        search_client = SearchClient(app=app)
+
+        # Set default visible_to if not provided
+        visible_to_list = list(visible_to) if visible_to else ["public"]
+
+        # Create the index
+        logger.info(f"Creating Globus Search index: {display_name}")
+
+        create_result = search_client.create_index(
+            display_name=display_name,
+            description=description or "",
+        )
+
+        # Print the result
+        index_id = create_result["id"]
+        logger.info(f"Successfully created search index: {index_id}")
+
+        print(f"Search Index ID: {index_id}")
+        print(f"Display Name: {display_name}")
+        print(f"Description: {description or '(No description)'}")
+        print(f"Visible To: {', '.join(visible_to_list)}")
+        print(
+            "\nYou can use this index ID in your configuration or with the --search-index option."
+        )
+
+    except Exception as e:
+        logger.error(f"Error creating search index: {e}")
+        sys.exit(1)
+
+
 @flow.command(name="create")
 @click.option(
-    "--client-id",
-    help="Globus Auth client ID",
+    "--flow-id",
+    help="Globus Flow ID. If set, the flow is updated.",
 )
-@click.option(
-    "--client-secret",
-    help="Globus Auth client secret",
-)
-def create_flow_cmd(
-    client_id: Optional[str],
-    client_secret: Optional[str],
-):
+def create_or_update_flow_cmd(flow_id: Optional[str]):
     """
     Create a new Globus Flow for SPAwn.
     """
-    # Use command-line options or fall back to config values
-    client_id = client_id or config.globus_client_id
-    client_secret = client_secret or config.globus_client_secret
 
     try:
-        flow = SPAwnFlow(
-            client_id=client_id,
-            client_secret=client_secret,
-        )
+        flow = SPAwnFlow()
 
-        flow_id = flow.create_flow()
+        flow_id = flow.create_or_update_flow(flow_id)
 
         logger.info(f"Created flow: {flow_id}")
         print(f"Flow ID: {flow_id}")
@@ -912,6 +1143,7 @@ def create_flow_cmd(
     "--max-depth",
     "-d",
     type=int,
+    default=3,
     help="Maximum depth to crawl",
 )
 @click.option(
@@ -923,6 +1155,7 @@ def create_flow_cmd(
     "--polling-rate",
     "-p",
     type=float,
+    default=1,
     help="Time in seconds to wait between file operations",
 )
 @click.option(
@@ -936,14 +1169,6 @@ def create_flow_cmd(
     help="Globus Auth identities that can see entries (can be used multiple times)",
 )
 @click.option(
-    "--client-id",
-    help="Globus Auth client ID",
-)
-@click.option(
-    "--client-secret",
-    help="Globus Auth client secret",
-)
-@click.option(
     "--wait/--no-wait",
     default=False,
     help="Whether to wait for the flow to complete",
@@ -954,6 +1179,26 @@ def create_flow_cmd(
     default=3600,
     help="Timeout in seconds for waiting for the flow to complete",
 )
+@click.option(
+    "--save-json",
+    default=True,
+    help="Whether to save metadata as a json file",
+)
+@click.option(
+    "--json-dir",
+    type=str,
+    help="Where to save json output",
+)
+@click.option(
+    "--enable-pages",
+    default=True,
+    help="Whether github pages should be enabled",
+)
+@click.option(
+    "--enable-actions",
+    default=False,
+    help="Whether github actions should be enabled",
+)
 def run_flow_cmd(
     flow_id: Optional[str],
     compute_endpoint_id: str,
@@ -962,6 +1207,8 @@ def run_flow_cmd(
     portal_name: str,
     portal_title: str,
     portal_subtitle: Optional[str],
+    enable_actions: bool,
+    enable_pages: bool,
     github_token: Optional[str],
     github_username: Optional[str],
     exclude: List[str],
@@ -973,10 +1220,10 @@ def run_flow_cmd(
     polling_rate: Optional[float],
     ignore_dot_dirs: bool,
     visible_to: List[str],
-    client_id: Optional[str],
-    client_secret: Optional[str],
     wait: bool,
     timeout: int,
+    save_json: bool,
+    json_dir: Optional[str],
 ):
     """
     Run a Globus Flow for SPAwn.
@@ -991,9 +1238,6 @@ def run_flow_cmd(
     github_token = github_token or config.github_token
     github_username = github_username or config.github_username
 
-    client_id = client_id or config.globus_client_id
-    client_secret = client_secret or config.globus_client_secret
-
     exclude_patterns = list(exclude) if exclude else None
     include_patterns = list(include) if include else None
     exclude_regex_patterns = list(exclude_regex) if exclude_regex else None
@@ -1003,13 +1247,13 @@ def run_flow_cmd(
     try:
         # Register functions with Globus Compute
         function_ids = register_functions(compute_endpoint)
-        compute_function_id = function_ids["remote_crawl_directory"]
+        crawl_function_id = function_ids["remote_crawl_directory"]
+        portal_function_id = function_ids["remote_create_portal"]
+        ingest_function_id = function_ids["ingest_metadata_from_file"]
 
         # Create or get flow
         flow = SPAwnFlow(
             flow_id=flow_id,
-            client_id=client_id,
-            client_secret=client_secret,
         )
 
         if not flow_id:
@@ -1019,12 +1263,16 @@ def run_flow_cmd(
         # Run flow
         result = flow.run_flow(
             compute_endpoint_id=compute_endpoint,
-            compute_function_id=compute_function_id,
+            compute_crawl_function_id=crawl_function_id,
+            compute_ingest_function_id=ingest_function_id,
+            compute_create_portal_function_id=portal_function_id,
             directory_path=directory,
             search_index=search_index,
             portal_name=portal_name,
             portal_title=portal_title,
             portal_subtitle=portal_subtitle,
+            enable_actions=enable_actions,
+            enable_pages=enable_pages,
             github_token=github_token,
             github_username=github_username,
             exclude_patterns=exclude_patterns,
@@ -1038,6 +1286,8 @@ def run_flow_cmd(
             visible_to=visible_to_list,
             wait=wait,
             timeout=timeout,
+            save_json=save_json,
+            json_dir=json_dir,
         )
 
         if wait:

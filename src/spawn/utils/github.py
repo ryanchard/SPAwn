@@ -15,6 +15,7 @@ from typing import Dict
 from typing import Optional
 from typing import Union
 
+import jinja2
 import requests
 from spawn.config import config
 
@@ -139,55 +140,68 @@ class GitHubClient:
 
         return fork_info
 
-    def configure_pages_and_actions(
+    def create_from_template(
         self,
-        repo_owner: str,
-        repo_name: str,
-        branch: str = "gh-pages",
-        pages_path: str = "/",
-    ) -> None:
+        template_owner: str,
+        template_repo: str,
+        new_name: str,
+        organization: Optional[str] = None,
+        description: Optional[str] = None,
+        private: bool = False,
+    ) -> Dict[str, Any]:
         """
-        Configure GitHub Actions permissions and enable GitHub Pages deployment.
+        Create a new repository from a template repository.
 
         Args:
-            repo_owner: Owner of the repository.
-            repo_name: Name of the repository.
-            branch: Branch to deploy from (e.g., 'gh-pages').
-            pages_path: Path in the repo to deploy (default is root).
+            template_owner: Owner of the template repository.
+            template_repo: Name of the template repository.
+            new_name: Name for the new repository.
+            organization: Organization to create the repository in. If None, creates in the user's account.
+            description: Description for the new repository.
+            private: Whether the new repository should be private.
+
+        Returns:
+            Dictionary with information about the new repository.
+
+        Raises:
+            ValueError: If the repository creation fails.
         """
         if not self.token:
-            raise ValueError("GitHub token is required to configure repo")
-
-        headers = self._get_headers()
-
-        # Enable Actions with write access
-        actions_url = (
-            f"{self.api_url}/repos/{repo_owner}/{repo_name}/actions/permissions"
-        )
-        actions_payload = {
-            "enabled": True,
-            "allowed_actions": "all",
-            "default_workflow_permissions": "write",
-        }
-        r1 = requests.put(actions_url, headers=headers, json=actions_payload)
-        if r1.status_code not in [200, 204]:
-            logger.warning(f"Failed to update Actions permissions: {r1.text}")
-
-        # Enable GitHub Pages from branch
-        pages_url = f"{self.api_url}/repos/{repo_owner}/{repo_name}/pages"
-        pages_payload = {
-            "source": {
-                "branch": branch,
-                "path": pages_path,
-            }
-        }
-        r2 = requests.put(pages_url, headers=headers, json=pages_payload)
-        if r2.status_code not in [201, 204]:
-            logger.warning(f"Failed to enable GitHub Pages: {r2.text}")
-        else:
-            logger.info(
-                f"Enabled GitHub Pages for {repo_owner}/{repo_name} from branch {branch}"
+            raise ValueError(
+                "GitHub token is required to create a repository from a template"
             )
+
+        # GitHub API endpoint for creating a repository from a template
+        template_url = f"{self.api_url}/repos/{template_owner}/{template_repo}/generate"
+
+        # Prepare request data
+        data = {
+            "name": new_name,
+            "private": private,
+        }
+
+        if description:
+            data["description"] = description
+
+        if organization:
+            data["owner"] = organization
+
+        # Set the appropriate Accept header for the template repositories API
+        headers = self._get_headers()
+        headers["Accept"] = "application/vnd.github.baptiste-preview+json"
+
+        # Create repository from template
+        response = requests.post(template_url, headers=headers, json=data)
+
+        if response.status_code != 201:
+            raise ValueError(
+                f"Failed to create repository from template: {response.json().get('message', response.text)}"
+            )
+
+        repo_info = response.json()
+        logger.info(f"Created repository from template: {repo_info['full_name']}")
+
+        return repo_info
 
     def clone_repository(
         self,
@@ -309,45 +323,174 @@ class GitHubClient:
 
         return result
 
+    def enable_github_pages(
+        self,
+        repo_owner: str,
+        repo_name: str,
+        build_type: str = "workflow",
+        branch: str = "gh-pages",
+        path: str = "/",
+    ) -> Dict[str, Any]:
+        """
+        Enable GitHub Pages for a repository.
 
-def fork_template_portal(
+        Args:
+            repo_owner: Owner of the repository.
+            repo_name: Name of the repository.
+            build_type: Build type for GitHub Pages. Use "workflow" for GitHub Actions or "legacy" for branch-based publishing.
+            branch: Branch to publish from. For workflow builds, this is typically 'gh-pages'.
+            path: Directory to publish from. Use "/" for root.
+
+        Returns:
+            Dictionary with information about the GitHub Pages site.
+
+        Raises:
+            ValueError: If enabling GitHub Pages fails.
+        """
+        if not self.token:
+            raise ValueError("GitHub token is required to enable GitHub Pages")
+
+        # GitHub API endpoint for Pages
+        url = f"{self.api_url}/repos/{repo_owner}/{repo_name}/pages"
+
+        # Prepare request data - GitHub API requires source to be an object
+        data = {
+            "source": {
+                "branch": branch,
+                "path": path,
+            }
+        }
+
+        # Add build_type if using workflow
+        if build_type == "workflow":
+            data["source"]["build_type"] = "workflow"
+        elif build_type != "legacy":
+            raise ValueError("build_type must be either 'workflow' or 'legacy'")
+
+        # Enable GitHub Pages
+        response = requests.post(url, headers=self._get_headers(), json=data)
+
+        if response.status_code not in [201, 204]:
+            raise ValueError(
+                f"Failed to enable GitHub Pages: {response.json().get('message', response.text)}"
+            )
+
+        # Get GitHub Pages information
+        response = requests.get(url, headers=self._get_headers())
+
+        if response.status_code != 200:
+            logger.warning(
+                f"Failed to get GitHub Pages information: {response.json().get('message', response.text)}"
+            )
+            return {"status": "enabled"}
+
+        result = response.json()
+        logger.info(f"Enabled GitHub Pages for {repo_owner}/{repo_name}")
+
+        return result
+
+    def enable_github_actions(
+        self,
+        repo_owner: str,
+        repo_name: str,
+    ) -> Dict[str, Any]:
+        """
+        Enable GitHub Actions for a repository.
+
+        Args:
+            repo_owner: Owner of the repository.
+            repo_name: Name of the repository.
+
+        Returns:
+            Dictionary with information about the GitHub Actions settings.
+
+        Raises:
+            ValueError: If enabling GitHub Actions fails.
+        """
+        if not self.token:
+            raise ValueError("GitHub token is required to enable GitHub Actions")
+
+        # GitHub API endpoint for repository actions settings
+        url = f"{self.api_url}/repos/{repo_owner}/{repo_name}/actions/permissions"
+
+        # Prepare request data to enable actions
+        data = {"enabled": True, "allowed_actions": "all"}
+
+        # Enable GitHub Actions
+        response = requests.put(url, headers=self._get_headers(), json=data)
+
+        if response.status_code != 204:
+            raise ValueError(
+                f"Failed to enable GitHub Actions: {response.json().get('message', response.text)}"
+            )
+
+        # Enable Actions workflow permissions to allow write access
+        workflow_url = f"{self.api_url}/repos/{repo_owner}/{repo_name}/actions/permissions/workflow"
+        workflow_data = {
+            "default_workflow_permissions": "write",
+            "can_approve_pull_request_reviews": True,
+        }
+
+        response = requests.put(
+            workflow_url, headers=self._get_headers(), json=workflow_data
+        )
+
+        if response.status_code != 204:
+            logger.warning(
+                f"Failed to set workflow permissions: {response.json().get('message', response.text)}"
+            )
+
+        logger.info(f"Enabled GitHub Actions for {repo_owner}/{repo_name}")
+
+        return {"status": "enabled"}
+
+
+def create_template_portal(
     new_name: str,
     description: Optional[str] = None,
     organization: Optional[str] = None,
     token: Optional[str] = None,
     username: Optional[str] = None,
     clone_dir: Optional[Path] = None,
+    private: bool = False,
 ) -> Dict[str, Any]:
     """
-    Fork the Globus template search portal.
+    Create a new search portal from the Globus template search portal.
 
     Args:
-        new_name: Name for the forked repository.
+        new_name: Name for the new repository.
         description: Description for the new repository.
-        organization: Organization to create the fork in. If None, creates in the user's account.
+        organization: Organization to create the repository in. If None, creates in the user's account.
         token: GitHub personal access token. If None, uses the token from config or environment.
         username: GitHub username. If None, uses the username from config or environment.
         clone_dir: Directory to clone the repository into. If None, doesn't clone the repository.
+        private: Whether the new repository should be private.
 
     Returns:
-        Dictionary with information about the forked repository and the path to the cloned repository.
+        Dictionary with information about the new repository and the path to the cloned repository.
     """
     # Create GitHub client
     client = GitHubClient(token=token, username=username)
 
-    # Fork repository
-    fork_info = client.create_fork(
-        repo_owner="globus",
-        repo_name="template-search-portal",
+    # Create repository from template
+    repo_info = client.create_from_template(
+        template_owner="globus",
+        template_repo="template-search-portal",
         new_name=new_name,
         organization=organization,
         description=description,
+        private=private,
     )
 
     result = {
-        "repository": fork_info,
+        "repository": repo_info,
         "clone_path": None,
     }
+
+    # Give it a couple of seconds to create the template
+    import time
+
+    time.sleep(2)
 
     # Clone repository if requested
     if clone_dir is not None:
@@ -364,7 +507,7 @@ def fork_template_portal(
 
 def configure_static_json(
     repo_dir: Union[str, Path],
-    index_name: str,
+    search_index: str,
     portal_title: Optional[str] = None,
     portal_subtitle: Optional[str] = None,
     additional_config: Optional[Dict[str, Any]] = None,
@@ -381,7 +524,7 @@ def configure_static_json(
 
     Args:
         repo_dir: Path to the repository directory.
-        index_name: UUID of the Globus Search index.
+        search_index: UUID of the Globus Search index.
         portal_title: Title for the portal.
         portal_subtitle: Subtitle for the portal.
         additional_config: Additional configuration to add to the static.json file.
@@ -399,21 +542,31 @@ def configure_static_json(
     repo_dir = Path(repo_dir).expanduser().absolute()
     static_json_path = repo_dir / "static.json"
 
-    # Create default configuration
-    config_data = {
-        "index": {
-            "uuid": index_name,
-            "name": index_name,
-        },
-        "branding": {},
+    # Get the template file path
+    template_path = Path(__file__).parent / "templates" / "static.json.template"
+
+    # Set up Jinja2 environment
+    template_dir = Path(__file__).parent / "templates"
+    env = jinja2.Environment(
+        loader=jinja2.FileSystemLoader(template_dir),
+        autoescape=jinja2.select_autoescape(),
+    )
+
+    # Load the template
+    template = env.get_template("static.json.template")
+
+    # Prepare template variables
+    template_vars = {
+        "index_name": search_index,
+        "portal_title": portal_title or "Search Portal",
+        "portal_subtitle": portal_subtitle or "Search and discover data",
     }
 
-    # Add portal title and subtitle if provided
-    if portal_title:
-        config_data["branding"]["title"] = portal_title
+    # Render the template
+    rendered_content = template.render(**template_vars)
 
-    if portal_subtitle:
-        config_data["branding"]["subtitle"] = portal_subtitle
+    # Convert to JSON object to allow for additional configuration
+    config_data = json.loads(rendered_content)
 
     # Add additional configuration if provided
     if additional_config:
@@ -452,31 +605,3 @@ def configure_static_json(
         logger.info(f"Pushed static.json to {repo_owner}/{repo_name}")
 
     return static_json_path
-
-
-def configure_pages_and_actions(
-    repo_owner: str,
-    repo_name: str,
-    branch: str = "gh-pages",
-    pages_path: str = "/",
-    token: Optional[str] = None,
-    username: Optional[str] = None,
-) -> None:
-    """
-    Configure GitHub Actions permissions and enable GitHub Pages deployment for a repository.
-
-    Args:
-        repo_owner: Owner of the repository.
-        repo_name: Name of the repository.
-        branch: Branch to deploy from (e.g., 'gh-pages').
-        pages_path: Path in the repo to deploy (default is root).
-        token: GitHub personal access token. If None, uses the token from config or environment.
-        username: GitHub username. If None, uses the username from config or environment.
-    """
-    client = GitHubClient(token=token, username=username)
-    client.configure_pages_and_actions(
-        repo_owner=repo_owner,
-        repo_name=repo_name,
-        branch=branch,
-        pages_path=pages_path,
-    )

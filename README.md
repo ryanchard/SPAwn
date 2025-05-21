@@ -9,7 +9,10 @@ SPAwn is a tool that automatically crawls directories, extracts metadata, and pu
 ## Features
 
 - Directory crawling and metadata extraction
-- Globus Search integration for publishing metadata
+- Globus Search integration:
+  - Create search indexes programmatically
+  - Publish metadata to search indexes
+  - Retrieve entries from search indexes
 - Globus Compute integration for remote crawling
 - Globus Flow integration for orchestrating the entire process
 - Configurable metadata extraction plugins
@@ -27,6 +30,9 @@ pip install -e .
 ```bash
 # Configure your crawler
 spawn config --output-dir ./output
+
+# Create a new Globus Search index
+spawn search create-index --display-name "My Data Index" --description "Index for my research data"
 
 # Run the crawler and publish to Globus Search
 spawn crawl /path/to/directory --search-index "your-search-index-uuid" --save-json
@@ -48,9 +54,6 @@ spawn github configure-portal ./portal --index-name "your-search-index-uuid" --t
 
 # Crawl a directory on a remote filesystem using Globus Compute
 spawn compute remote-crawl /path/to/directory --endpoint-id "your-compute-endpoint-id" --search-index "your-search-index-uuid"
-
-# Get the result of a Globus Compute task
-spawn compute get-result "your-task-id"
 
 # Create a Globus Flow for SPAwn
 spawn flow create

@@ -129,3 +129,21 @@ spawn github configure-portal ./portal --index-name my-index --config-file ./my-
 ```
 
 See the [examples/static.json.example](../examples/static.json.example) file for a complete example of the configuration options.
+
+## Enabling GitHub Pages and Actions
+
+When configuring your portal, you can also enable GitHub Pages and GitHub Actions to automatically publish your portal:
+
+```bash
+# Configure portal and enable GitHub Pages and Actions
+spawn github configure-portal ./portal --index-name my-index --title "My Search Portal" --push --repo-owner "your-username" --repo-name "my-search-portal" --enable-pages --enable-actions
+```
+
+By default, GitHub Pages will be configured to publish from the root directory of the main branch. You can customize this:
+
+```bash
+# Configure portal with custom GitHub Pages settings
+spawn github configure-portal ./portal --index-name my-index --push --repo-owner "your-username" --repo-name "my-search-portal" --enable-pages --pages-branch "gh-pages" --pages-path "/docs"
+```
+
+Enabling GitHub Actions allows workflows to automatically build and deploy your portal to GitHub Pages whenever changes are pushed to the repository.

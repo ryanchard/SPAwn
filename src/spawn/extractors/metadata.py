@@ -165,14 +165,21 @@ def extract_metadata(file_path: Path) -> Dict[str, Any]:
 
 
 def save_metadata_to_json(
-    metadata: Dict[str, Any], output_dir: Optional[Path] = None
+    file_path_or_metadata: Union[Path, Dict[str, Any]],
+    metadata: Optional[Dict[str, Any]] = None,
+    output_dir: Optional[Path] = None,
 ) -> Path:
     """
     Save metadata to a JSON file.
 
+    This function can be called in two ways:
+    1. With a file path and its metadata: save_metadata_to_json(file_path, metadata, output_dir)
+    2. With a dictionary of file paths to metadata: save_metadata_to_json(metadata_dict, output_dir=output_dir)
+
     Args:
-        metadata: Dictionary of metadata to save.
-        output_dir: Directory to save the JSON file in. If None, uses the same directory as the file.
+        file_path_or_metadata: Either a Path object pointing to the file, or a dictionary mapping file paths to metadata.
+        metadata: Dictionary of metadata to save (only used when file_path_or_metadata is a Path).
+        output_dir: Directory to save the JSON file(s) in. If None, uses the config value.
 
     Returns:
         Path to the saved JSON file.
@@ -187,20 +194,41 @@ def save_metadata_to_json(
     # Create output directory if it doesn't exist
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Create JSON filename based on original filename
-    json_filename = "SPAwn_metadata.json"
-    json_path = output_dir / json_filename
+    # Check if we're saving a single file's metadata or multiple files
+    if isinstance(file_path_or_metadata, dict) and metadata is None:
+        # We're saving multiple files' metadata
+        metadata_dict = file_path_or_metadata
+        json_filename = "SPAwn_metadata.json"
+        json_path = output_dir / json_filename
 
-    # Save metadata to JSON file
-    print(json_path)
-    try:
-        with open(json_path, "w") as f:
-            json.dump(metadata, f, indent=2, default=str)
-        logger.debug(f"Saved metadata to {json_path}")
-        return json_path
-    except Exception as e:
-        logger.error(f"Error saving metadata to {json_path}: {e}")
-        raise
+        try:
+            with open(json_path, "w") as f:
+                json.dump(metadata_dict, f, indent=2, default=str)
+            logger.debug(
+                f"Saved metadata for {len(metadata_dict)} files to {json_path}"
+            )
+            return json_path
+        except Exception as e:
+            logger.error(f"Error saving metadata to {json_path}: {e}")
+            raise
+    else:
+        # We're saving a single file's metadata
+        file_path = file_path_or_metadata
+        if not isinstance(file_path, Path):
+            file_path = Path(file_path)
+
+        # Create JSON filename based on original filename
+        json_filename = f"{file_path.stem}_metadata.json"
+        json_path = output_dir / json_filename
+
+        try:
+            with open(json_path, "w") as f:
+                json.dump(metadata, f, indent=2, default=str)
+            logger.debug(f"Saved metadata for {file_path} to {json_path}")
+            return json_path
+        except Exception as e:
+            logger.error(f"Error saving metadata to {json_path}: {e}")
+            raise
 
 
 # Import and register additional extractors
