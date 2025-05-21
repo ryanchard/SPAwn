@@ -163,6 +163,7 @@ def crawl(
     if not index_uuid:
         logger.error("No Globus Search index UUID provided")
         import sys
+
         sys.exit(1)
 
     client = GlobusSearchClient(
@@ -176,8 +177,6 @@ def crawl(
 
     # Publish metadata to Globus Search
     logger.info(f"Publishing metadata to Globus Search index: {index_uuid}")
-    print('QUITTING HERE')
-    return
 
     result = publish_metadata(
         metadata=metadata,
@@ -211,6 +210,7 @@ def get_entry(
     if not index_uuid:
         logger.error("No Globus Search index UUID provided")
         import sys
+
         sys.exit(1)
 
     client = GlobusSearchClient(index_uuid=index_uuid)

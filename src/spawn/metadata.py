@@ -26,29 +26,29 @@ class MetadataExtractor(ABC):
 
     # List of MIME types this extractor can handle
     supported_mime_types: List[str] = []
-    
+
     @staticmethod
     def add_common_metadata(file_path: Path) -> Dict[str, Any]:
         """
         Add common file metadata to the extraction results.
-        
+
         This method adds standardized file metadata that should be
         consistent across all extractors.
-        
+
         Args:
             file_path: Path to the file.
-            
+
         Returns:
             Dictionary of common file metadata.
         """
         stat = file_path.stat()
-        
+
         return {
             "file": {
                 "filename": file_path.name,
                 "directory": str(file_path.parent),
                 "extension": file_path.suffix.lower(),
-                "size_bytes": stat.st_size
+                "size_bytes": stat.st_size,
             }
         }
 
@@ -112,19 +112,21 @@ class BasicMetadataExtractor(MetadataExtractor):
         """
         # Get common file metadata
         metadata = MetadataExtractor.add_common_metadata(file_path)
-        
+
         stat = file_path.stat()
         mime_type, encoding = mimetypes.guess_type(str(file_path))
 
         # Add additional metadata
-        metadata.update({
-            "path": str(file_path),
-            "created_at": datetime.fromtimestamp(stat.st_ctime).isoformat(),
-            "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
-            "accessed_at": datetime.fromtimestamp(stat.st_atime).isoformat(),
-            "mime_type": mime_type or "application/octet-stream",
-            "encoding": encoding,
-        })
+        metadata.update(
+            {
+                "path": str(file_path),
+                "created_at": datetime.fromtimestamp(stat.st_ctime).isoformat(),
+                "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                "accessed_at": datetime.fromtimestamp(stat.st_atime).isoformat(),
+                "mime_type": mime_type or "application/octet-stream",
+                "encoding": encoding,
+            }
+        )
 
         return metadata
 
@@ -169,7 +171,7 @@ def extract_metadata(file_path: Path) -> Dict[str, Any]:
         Dictionary of metadata.
     """
     metadata = {}
-    
+
     # Add common file metadata
     common_metadata = MetadataExtractor.add_common_metadata(file_path)
     metadata.update(common_metadata)
@@ -182,7 +184,7 @@ def extract_metadata(file_path: Path) -> Dict[str, Any]:
         try:
             extractor = extractor_class()
             extracted_data = extractor.extract(file_path)
-            
+
             # If the extractor already added file metadata in a different format,
             # we want to preserve our standardized format
             if "file" in metadata and "file" in extracted_data:
@@ -191,7 +193,7 @@ def extract_metadata(file_path: Path) -> Dict[str, Any]:
                 for key, value in file_metadata.items():
                     if key not in metadata["file"]:
                         metadata["file"][key] = value
-            
+
             metadata.update(extracted_data)
         except Exception as e:
             logger.error(

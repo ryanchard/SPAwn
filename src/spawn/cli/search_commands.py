@@ -49,7 +49,9 @@ def create_search_index(
     """
     try:
         # Get a Globus Auth token for Search
-        app = globus_sdk.UserApp("SPAwn CLI App", client_id="367628a1-4b6a-4176-82bd-422f071d1adc")
+        app = globus_sdk.UserApp(
+            "SPAwn CLI App", client_id="367628a1-4b6a-4176-82bd-422f071d1adc"
+        )
         app.add_scope_requirements(
             {"search": [globus_sdk.scopes.SearchScopes.make_mutable("all")]}
         )

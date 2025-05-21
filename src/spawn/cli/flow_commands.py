@@ -264,6 +264,7 @@ def run_flow_cmd(
         if wait:
             logger.info(f"Flow completed with status: {result['status']}")
             import json
+
             print(json.dumps(result, indent=2, default=str))
         else:
             logger.info(f"Flow run ID: {result}")

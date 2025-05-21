@@ -57,7 +57,7 @@ class JSONMetadataExtractor(MetadataExtractor):
             metadata["json_root_key_count"] = len(metadata["json_root_keys"])
             metadata["json_depth"] = self._calculate_depth(json_data)
             metadata["json_size"] = len(content)
-            
+
             # Add a preview (truncated if necessary)
             preview = content[:1000] if len(content) > 1000 else content
             metadata["content_preview"] = preview
@@ -161,13 +161,12 @@ class JSONMetadataExtractor(MetadataExtractor):
             if not data:
                 return current_depth
             return max(
-                self._calculate_depth(value, current_depth + 1) for value in data.values()
+                self._calculate_depth(value, current_depth + 1)
+                for value in data.values()
             )
         elif isinstance(data, list):
             if not data:
                 return current_depth
-            return max(
-                self._calculate_depth(item, current_depth + 1) for item in data
-            )
+            return max(self._calculate_depth(item, current_depth + 1) for item in data)
         else:
             return current_depth
