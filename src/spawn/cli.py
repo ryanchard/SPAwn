@@ -1026,7 +1026,6 @@ def create_search_index(
         create_result = search_client.create_index(
             display_name=display_name,
             description=description or "",
-            visible_to=visible_to_list,
         )
 
         # Print the result
