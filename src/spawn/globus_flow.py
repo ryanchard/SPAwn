@@ -147,26 +147,28 @@ class SPAwnFlow:
                         },
                     },
                     "ResultPath": "$.search_result",
-                    "End": True,
-                    # "Next": "CreatePortal",
+                    "Next": "CreatePortal",
                 },
-                # "CreatePortal": {
-                #     "Type": "Action",
-                #     "ActionUrl": "https://compute.actions.globus.org",
-                #     "Parameters": {
-                #         "endpoint.$": "$.compute_endpoint_id",
-                #         "function.$": "$.compute_create_portal_function_id",
-                #         "kwargs": {
-                #             "repo_owner": "globus",
-                #             "repo_name": "template-search-portal",
-                #             "new_name.$": "$.portal_name",
-                #             "token.$": "$.github_token",
-                #             "username.$": "$.github_username",
-                #         },
-                #     },
-                #     "ResultPath": "$.portal_result",
-                #     "End": True,
-                # },
+                "CreatePortal": {
+                    "Type": "Action",
+                    "ActionUrl": "https://compute.actions.globus.org",
+                    "Parameters": {
+                        "endpoint.$": "$.compute_endpoint_id",
+                        "function.$": "$.compute_create_portal_function_id",
+                        "kwargs": {
+                            "new_name.$": "$.portal_name",
+                            "search_index.$": "$.search_index",
+                            "token.$": "$.github_token",
+                            "username.$": "$.github_username",
+                            "portal_title.$": "$.portal_title",
+                            "portal_subtitle.$": "$.portal_subtitle",
+                            "enable_pages.$": "$.enable_pages",
+                            "enable_actions.$": "$.enable_actions",
+                        },
+                    },
+                    "ResultPath": "$.portal_result",
+                    "End": True,
+                },
             },
         },
     }
@@ -252,6 +254,8 @@ class SPAwnFlow:
         portal_name: str,
         portal_title: str,
         portal_subtitle: Optional[str] = None,
+        enable_pages: bool = True,
+        enable_actions: bool = True,
         github_token: Optional[str] = None,
         github_username: Optional[str] = None,
         exclude_patterns: Optional[List[str]] = [],
@@ -283,6 +287,8 @@ class SPAwnFlow:
             portal_name: Name for the portal repository.
             portal_title: Title for the portal.
             portal_subtitle: Subtitle for the portal.
+            enable_actions: Whether github actions should be enabled on the portal.
+            enable_pages: Whether github pages should be enabled on the portal.
             github_token: GitHub personal access token.
             github_username: GitHub username.
             exclude_patterns: Glob patterns to exclude from crawling.
@@ -321,6 +327,8 @@ class SPAwnFlow:
             "search_index": search_index,
             "portal_name": portal_name,
             "portal_title": portal_title,
+            "enable_pages": enable_pages,
+            "enable_actions": enable_actions,
             "exclude_patterns": exclude_patterns,
             "include_patterns": include_patterns,
             "exclude_regex": exclude_regex,

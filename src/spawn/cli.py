@@ -1181,6 +1181,16 @@ def create_or_update_flow_cmd(flow_id: Optional[str]):
     type=str,
     help="Where to save json output",
 )
+@click.option(
+    "--enable-pages",
+    default=True,
+    help="Whether github pages should be enabled",
+)
+@click.option(
+    "--enable-actions",
+    default=False,
+    help="Whether github actions should be enabled",
+)
 def run_flow_cmd(
     flow_id: Optional[str],
     compute_endpoint_id: str,
@@ -1189,6 +1199,8 @@ def run_flow_cmd(
     portal_name: str,
     portal_title: str,
     portal_subtitle: Optional[str],
+    enable_actions: bool,
+    enable_pages: bool,
     github_token: Optional[str],
     github_username: Optional[str],
     exclude: List[str],
@@ -1251,6 +1263,8 @@ def run_flow_cmd(
             portal_name=portal_name,
             portal_title=portal_title,
             portal_subtitle=portal_subtitle,
+            enable_actions=enable_actions,
+            enable_pages=enable_pages,
             github_token=github_token,
             github_username=github_username,
             exclude_patterns=exclude_patterns,
