@@ -151,7 +151,7 @@ class SPAwnFlow:
                     "ActionUrl": "https://compute.actions.globus.org",
                     "Parameters": {
                         "endpoint.$": "$.compute_endpoint_id",
-                        "function.$": "$.compute_fork_function_id",
+                        "function.$": "$.compute_create_portal_function_id",
                         "kwargs": {
                             "repo_owner": "globus",
                             "repo_name": "template-search-portal",
@@ -214,7 +214,9 @@ class SPAwnFlow:
     def run_flow(
         self,
         compute_endpoint_id: str,
-        compute_function_id: str,
+        compute_crawl_function_id: str,
+        compute_ingest_function_id: str,
+        compute_create_portal_function_id: str,
         directory_path: str,
         search_index: str,
         portal_name: str,
@@ -240,7 +242,9 @@ class SPAwnFlow:
 
         Args:
             compute_endpoint_id: Globus Compute endpoint ID.
-            compute_function_id: Globus Compute function ID for remote_crawl_directory.
+            compute_crawl_function_id: Globus Compute function ID for remote_crawl_directory.
+            compute_ingest_function_id: Globus Compute function ID for remote_ingest_metadata_from_file.
+            compute_create_portal_function_id: Globus Compute function ID for remote_create_portal.
             directory_path: Path to the directory to crawl.
             search_index: Globus Search index UUID.
             portal_name: Name for the portal repository.
@@ -273,7 +277,9 @@ class SPAwnFlow:
         # Prepare flow input
         flow_input = {
             "compute_endpoint_id": compute_endpoint_id,
-            "compute_function_id": compute_function_id,
+            "compute_crawl_function_id": compute_crawl_function_id,
+            "compute_ingest_function_id": compute_ingest_function_id,
+            "compute_create_portal_function_id": compute_create_portal_function_id,
             "directory_path": directory_path,
             "search_index": search_index,
             "portal_name": portal_name,
@@ -392,13 +398,17 @@ def create_and_run_flow(
 
     # Register functions with Globus Compute
     function_ids = register_functions(compute_endpoint_id)
-    compute_function_id = function_ids["remote_crawl_directory"]
+    compute_crawl_function_id = function_ids["remote_crawl_directory"]
+    compute_ingest_function_id = function_ids["ingest_metadata_from_file"]
+    compute_create_portal_function_id = function_ids["remote_create_portal"]
 
     # Create and run flow
     flow = SPAwnFlow()
     return flow.run_flow(
         compute_endpoint_id=compute_endpoint_id,
-        compute_function_id=compute_function_id,
+        compute_crawl_function_id=compute_crawl_function_id,
+        compute_ingest_function_id=compute_ingest_function_id,
+        compute_create_portal_function_id=compute_create_portal_function_id,
         directory_path=directory_path,
         search_index=search_index,
         portal_name=portal_name,

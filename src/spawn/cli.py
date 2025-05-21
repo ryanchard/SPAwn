@@ -24,6 +24,7 @@ from spawn.globus_compute import (
     remote_ingest_metadata,
     register_functions,
     get_task_result,
+    create_portal_remotely,
 )
 from spawn.globus_flow import create_and_run_flow, SPAwnFlow
 from spawn.globus_search import publish_metadata, GlobusSearchClient
@@ -808,6 +809,164 @@ def remote_crawl_cmd(
         sys.exit(1)
 
 
+@compute.command(name="create-portal")
+@click.option(
+    "--endpoint-id",
+    required=True,
+    help="Globus Compute endpoint ID",
+)
+@click.option(
+    "--name",
+    required=True,
+    help="Name for the forked repository",
+)
+@click.option(
+    "--index-name",
+    required=True,
+    help="UUID of the Globus Search index",
+)
+@click.option(
+    "--description",
+    help="Description for the new repository",
+)
+@click.option(
+    "--organization",
+    help="Organization to create the fork in",
+)
+@click.option(
+    "--token",
+    help="GitHub personal access token (overrides config and environment)",
+)
+@click.option(
+    "--username",
+    help="GitHub username (overrides config and environment)",
+)
+@click.option(
+    "--title",
+    help="Title for the portal",
+)
+@click.option(
+    "--subtitle",
+    help="Subtitle for the portal",
+)
+@click.option(
+    "--config-file",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Path to additional configuration JSON file",
+)
+@click.option(
+    "--enable-pages/--no-enable-pages",
+    default=False,
+    help="Whether to enable GitHub Pages for the repository",
+)
+@click.option(
+    "--enable-actions/--no-enable-actions",
+    default=False,
+    help="Whether to enable GitHub Actions for the repository",
+)
+@click.option(
+    "--pages-branch",
+    default="main",
+    help="Branch to publish GitHub Pages from (if --enable-pages is used)",
+)
+@click.option(
+    "--pages-path",
+    default="/",
+    help="Directory to publish GitHub Pages from (if --enable-pages is used). Use '/' for root",
+)
+@click.option(
+    "--wait/--no-wait",
+    default=True,
+    help="Whether to wait for the task to complete",
+)
+@click.option(
+    "--timeout",
+    type=int,
+    default=3600,
+    help="Timeout in seconds for waiting for the task to complete",
+)
+def create_portal_cmd(
+    endpoint_id: str,
+    name: str,
+    index_name: str,
+    description: Optional[str],
+    organization: Optional[str],
+    token: Optional[str],
+    username: Optional[str],
+    title: Optional[str],
+    subtitle: Optional[str],
+    config_file: Optional[Path],
+    enable_pages: bool,
+    enable_actions: bool,
+    pages_branch: str,
+    pages_path: str,
+    wait: bool,
+    timeout: int,
+):
+    """
+    Create a Globus search portal remotely using Globus Compute.
+    
+    This command forks the Globus template search portal, configures it with the specified
+    Globus Search index, and optionally enables GitHub Pages and GitHub Actions.
+    All operations are performed remotely on a Globus Compute endpoint.
+    """
+    # Use command-line options or fall back to config values
+    endpoint = endpoint_id or config.globus_compute_endpoint_id
+    if not endpoint:
+        logger.error("No Globus Compute endpoint ID provided")
+        sys.exit(1)
+    
+    # Load additional configuration if provided
+    additional_config = None
+    if config_file:
+        try:
+            with open(config_file, "r") as f:
+                additional_config = json.load(f)
+        except Exception as e:
+            logger.error(f"Error loading configuration file: {e}")
+            sys.exit(1)
+    
+    # Get GitHub credentials from options or config
+    github_token = token or config.github_token
+    github_username = username or config.github_username
+    
+    try:
+        logger.info(f"Creating portal {name} remotely on endpoint {endpoint}")
+        
+        result = create_portal_remotely(
+            endpoint_id=endpoint,
+            new_name=name,
+            index_name=index_name,
+            description=description,
+            organization=organization,
+            token=github_token,
+            username=github_username,
+            portal_title=title,
+            portal_subtitle=subtitle,
+            additional_config=additional_config,
+            enable_pages=enable_pages,
+            enable_actions=enable_actions,
+            pages_branch=pages_branch,
+            pages_path=pages_path,
+            wait=wait,
+            timeout=timeout,
+        )
+        
+        if wait:
+            logger.info(f"Portal creation completed")
+            print(f"Repository URL: {result['repository_url']}")
+            if enable_pages:
+                print(f"Portal URL: {result['portal_url']}")
+            print(json.dumps(result, indent=2, default=str))
+        else:
+            logger.info(f"Task ID: {result}")
+            print(f"Task ID: {result}")
+            
+    except Exception as e:
+        logger.error(f"Error creating portal: {e}")
+        sys.exit(1)
+
+
 @cli.group()
 def flow():
     """
@@ -1054,6 +1213,7 @@ def run_flow_cmd(
         # Register functions with Globus Compute
         function_ids = register_functions(compute_endpoint)
         compute_function_id = function_ids["remote_crawl_directory"]
+        portal_function_id = function_ids["remote_create_portal"]
 
         # Create or get flow
         flow = SPAwnFlow(
@@ -1067,7 +1227,9 @@ def run_flow_cmd(
         # Run flow
         result = flow.run_flow(
             compute_endpoint_id=compute_endpoint,
-            compute_function_id=compute_function_id,
+            compute_crawl_function_id=compute_function_id,
+            compute_ingest_function_id=function_ids["ingest_metadata_from_file"],
+            compute_create_portal_function_id=portal_function_id,
             directory_path=directory,
             search_index=search_index,
             portal_name=portal_name,
