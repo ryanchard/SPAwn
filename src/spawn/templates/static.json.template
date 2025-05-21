@@ -18,15 +18,39 @@
       },
       "components": {
         "Result": {
-          "heading": "entries[0].content.name",
+          "heading": "entries[0].content.file.filename",
           "fields": [
             {
-              "label": "Tags",
-              "property": "entries[0].content.tags"
+              "label": "Directory",
+              "property": "entries[0].content.file.directory"
             },
             {
-              "label": "Region",
-              "property": "entries[0].content.region"
+              "label": "Size",
+              "property": "entries[0].content.file.size_bytes"
+            },
+            {
+              "label": "Extension",
+              "property": "entries[0].content.file.extension"
+            },
+            {
+              "label": "Language",
+              "property": "entries[0].content.language"
+            },
+            {
+              "label": "Line Count",
+              "property": "entries[0].content.line_count"
+            },
+            {
+              "label": "Complexity",
+              "property": "entries[0].content.complexity"
+            },
+            {
+              "label": "Imports",
+              "property": "entries[0].content.imports"
+            },
+            {
+              "label": "Content Preview",
+              "property": "entries[0].content.content_preview"
             }
           ]
         }
@@ -37,19 +61,19 @@
           "facets": [
             {
               "name": "Directory",
-              "field_name": "entries[0].content.file.directory",
+              "field_name": "file.directory",
               "type": "terms",
               "size": 10
             },
             {
               "name": "Extension",
-              "field_name": "entries[0].content.file.extension",
+              "field_name": "file.extension",
               "type": "terms",
               "size": 10
             },
             {
-              "name": "File Size",
-              "field_name": "entries[0].content.file.size_bytes",
+              "name": "Language",
+              "field_name": "language",
               "type": "terms",
               "size": 10
             }
