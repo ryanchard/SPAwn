@@ -57,7 +57,8 @@ class ImageMetadataExtractor(MetadataExtractor):
         Returns:
             Dictionary of metadata.
         """
-        metadata = {}
+        # Get common file metadata
+        metadata = self.add_common_metadata(file_path)
 
         try:
             # Try to import PIL, which is required for image processing

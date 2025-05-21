@@ -53,7 +53,8 @@ class HDFMetadataExtractor(MetadataExtractor):
         Returns:
             Dictionary of metadata.
         """
-        metadata = {}
+        # Get common file metadata
+        metadata = self.add_common_metadata(file_path)
 
         try:
             # Try to import h5py, which is required for HDF5 file handling
