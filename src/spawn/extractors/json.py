@@ -39,7 +39,8 @@ class JSONMetadataExtractor(MetadataExtractor):
         Returns:
             Dictionary of metadata.
         """
-        metadata = {}
+        # Get common file metadata
+        metadata = self.add_common_metadata(file_path)
 
         try:
             # Read file content
