@@ -404,7 +404,7 @@ def remote_create_portal(
         sys.path.append(current_dir)
 
     # Import spawn modules
-    from spawn.github import fork_template_portal, configure_static_json, GitHubClient
+    from spawn.github import create_template_portal, configure_static_json, GitHubClient
 
     # Step 1: Fork the template portal
     # with tempfile.TemporaryDirectory() as temp_dir:
@@ -412,7 +412,7 @@ def remote_create_portal(
     clone_dir = Path(temp_dir) / new_name
 
     # Fork and clone the repository
-    fork_result = fork_template_portal(
+    fork_result = create_template_portal(
         new_name=new_name,
         description=description,
         organization=organization,
