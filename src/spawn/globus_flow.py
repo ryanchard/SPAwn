@@ -25,88 +25,88 @@ class SPAwnFlow:
     FLOW_DEFINITION = {
         "title": "SPAwn Flow",
         "description": "A flow to crawl a directory, publish metadata to Globus Search, and create a portal",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "compute_endpoint_id": {
-                    "type": "string",
-                    "description": "Globus Compute endpoint ID",
-                },
-                "directory_path": {
-                    "type": "string",
-                    "description": "Path to the directory to crawl",
-                },
-                "search_index": {
-                    "type": "string",
-                    "description": "Globus Search index UUID",
-                },
-                "portal_name": {
-                    "type": "string",
-                    "description": "Name for the portal repository",
-                },
-                "portal_title": {
-                    "type": "string",
-                    "description": "Title for the portal",
-                },
-                "portal_subtitle": {
-                    "type": "string",
-                    "description": "Subtitle for the portal",
-                },
-                "github_token": {
-                    "type": "string",
-                    "description": "GitHub personal access token",
-                },
-                "github_username": {"type": "string", "description": "GitHub username"},
-                "exclude_patterns": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Glob patterns to exclude from crawling",
-                },
-                "include_patterns": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Glob patterns to include in crawling",
-                },
-                "exclude_regex": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Regex patterns to exclude from crawling",
-                },
-                "include_regex": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Regex patterns to include in crawling",
-                },
-                "max_depth": {
-                    "type": "integer",
-                    "description": "Maximum depth to crawl",
-                },
-                "follow_symlinks": {
-                    "type": "boolean",
-                    "description": "Whether to follow symbolic links",
-                },
-                "polling_rate": {
-                    "type": "number",
-                    "description": "Time in seconds to wait between file operations",
-                },
-                "ignore_dot_dirs": {
-                    "type": "boolean",
-                    "description": "Whether to ignore directories starting with a dot",
-                },
-                "visible_to": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Globus Auth identities that can see entries",
-                },
-            },
-            "required": [
-                "compute_endpoint_id",
-                "directory_path",
-                "search_index",
-                "portal_name",
-                "portal_title",
-            ],
-        },
+        "input_schema": {},
+        #     "type": "object",
+        #     "properties": {
+        #         "compute_endpoint_id": {
+        #             "type": "string",
+        #             "description": "Globus Compute endpoint ID",
+        #         },
+        #         "directory_path": {
+        #             "type": "string",
+        #             "description": "Path to the directory to crawl",
+        #         },
+        #         "search_index": {
+        #             "type": "string",
+        #             "description": "Globus Search index UUID",
+        #         },
+        #         "portal_name": {
+        #             "type": "string",
+        #             "description": "Name for the portal repository",
+        #         },
+        #         "portal_title": {
+        #             "type": "string",
+        #             "description": "Title for the portal",
+        #         },
+        #         "portal_subtitle": {
+        #             "type": "string",
+        #             "description": "Subtitle for the portal",
+        #         },
+        #         "github_token": {
+        #             "type": "string",
+        #             "description": "GitHub personal access token",
+        #         },
+        #         "github_username": {"type": "string", "description": "GitHub username"},
+        #         "exclude_patterns": {
+        #             "type": "array",
+        #             "items": {"type": "string"},
+        #             "description": "Glob patterns to exclude from crawling",
+        #         },
+        #         "include_patterns": {
+        #             "type": "array",
+        #             "items": {"type": "string"},
+        #             "description": "Glob patterns to include in crawling",
+        #         },
+        #         "exclude_regex": {
+        #             "type": "array",
+        #             "items": {"type": "string"},
+        #             "description": "Regex patterns to exclude from crawling",
+        #         },
+        #         "include_regex": {
+        #             "type": "array",
+        #             "items": {"type": "string"},
+        #             "description": "Regex patterns to include in crawling",
+        #         },
+        #         "max_depth": {
+        #             "type": "integer",
+        #             "description": "Maximum depth to crawl",
+        #         },
+        #         "follow_symlinks": {
+        #             "type": "boolean",
+        #             "description": "Whether to follow symbolic links",
+        #         },
+        #         "polling_rate": {
+        #             "type": "number",
+        #             "description": "Time in seconds to wait between file operations",
+        #         },
+        #         "ignore_dot_dirs": {
+        #             "type": "boolean",
+        #             "description": "Whether to ignore directories starting with a dot",
+        #         },
+        #         "visible_to": {
+        #             "type": "array",
+        #             "items": {"type": "string"},
+        #             "description": "Globus Auth identities that can see entries",
+        #         },
+        #     },
+        #     "required": [
+        #         "compute_endpoint_id",
+        #         "directory_path",
+        #         "search_index",
+        #         "portal_name",
+        #         "portal_title",
+        #     ],
+        # },
         "definition": {
             "StartAt": "CrawlDirectory",
             "States": {
@@ -126,6 +126,8 @@ class SPAwnFlow:
                             "follow_symlinks.$": "$.follow_symlinks",
                             "polling_rate.$": "$.polling_rate",
                             "ignore_dot_dirs.$": "$.ignore_dot_dirs",
+                            "save_json.$": "$.save_json",
+                            "json_dir.$": "$.json_dir",
                         },
                     },
                     "ResultPath": "$.crawl_result",
@@ -140,29 +142,31 @@ class SPAwnFlow:
                         "kwargs": {
                             "search_index.$": "$.search_index",
                             "visible_to.$": "$.visible_to",
-                            "entries.$": "$.crawl_result.details.result",
+                            "batch_size.$": "$.batch_size",
+                            "metadata_file_path.$": "$.crawl_result.details.result[0]",
                         },
                     },
                     "ResultPath": "$.search_result",
-                    "Next": "CreatePortal",
-                },
-                "CreatePortal": {
-                    "Type": "Action",
-                    "ActionUrl": "https://compute.actions.globus.org",
-                    "Parameters": {
-                        "endpoint.$": "$.compute_endpoint_id",
-                        "function.$": "$.compute_create_portal_function_id",
-                        "kwargs": {
-                            "repo_owner": "globus",
-                            "repo_name": "template-search-portal",
-                            "new_name.$": "$.portal_name",
-                            "token.$": "$.github_token",
-                            "username.$": "$.github_username",
-                        },
-                    },
-                    "ResultPath": "$.portal_result",
                     "End": True,
+                    # "Next": "CreatePortal",
                 },
+                # "CreatePortal": {
+                #     "Type": "Action",
+                #     "ActionUrl": "https://compute.actions.globus.org",
+                #     "Parameters": {
+                #         "endpoint.$": "$.compute_endpoint_id",
+                #         "function.$": "$.compute_create_portal_function_id",
+                #         "kwargs": {
+                #             "repo_owner": "globus",
+                #             "repo_name": "template-search-portal",
+                #             "new_name.$": "$.portal_name",
+                #             "token.$": "$.github_token",
+                #             "username.$": "$.github_username",
+                #         },
+                #     },
+                #     "ResultPath": "$.portal_result",
+                #     "End": True,
+                # },
             },
         },
     }
@@ -176,10 +180,11 @@ class SPAwnFlow:
             flow_scope: Globus Auth scope for the flow.
         """
         self.flow_client = None
+        self.specific_flow_client = None
         self.flow_id = flow_id
 
     def _get_flow_client(self):
-        """Get the Globus Automate Client."""
+        """Get the Globus Flows Client."""
 
         if self.flow_client is None:
             app = UserApp(
@@ -188,6 +193,19 @@ class SPAwnFlow:
             self.flow_client = globus_sdk.FlowsClient(app=app)
 
         return self.flow_client
+
+    def _get_specific_flow_client(self, flow_id: str):
+        """Get the Globus Flows Specific Client."""
+
+        if self.specific_flow_client is None:
+            app = UserApp(
+                "SPAwn CLI App", client_id="367628a1-4b6a-4176-82bd-422f071d1adc"
+            )
+            self.specific_flow_client = globus_sdk.SpecificFlowClient(
+                app=app, flow_id=flow_id
+            )
+
+        return self.specific_flow_client
 
     def create_or_update_flow(self, flow_id: Optional[str] = None) -> str:
         """
@@ -208,17 +226,18 @@ class SPAwnFlow:
                 input_schema=self.FLOW_DEFINITION["input_schema"],
                 description=self.FLOW_DEFINITION["description"],
             )
-
-        # Create flow
-        flow = flow_client.create_flow(
-            self.FLOW_DEFINITION["title"],
-            self.FLOW_DEFINITION["definition"],
-            self.FLOW_DEFINITION["input_schema"],
-            description=self.FLOW_DEFINITION["description"],
-        )
-
-        self.flow_id = flow["id"]
-        logger.info(f"Created flow: {self.flow_id}")
+            logger.info(f"Updated flow: {flow_id}")
+            return flow_id
+        else:
+            # Create flow
+            flow = flow_client.create_flow(
+                self.FLOW_DEFINITION["title"],
+                self.FLOW_DEFINITION["definition"],
+                self.FLOW_DEFINITION["input_schema"],
+                description=self.FLOW_DEFINITION["description"],
+            )
+            self.flow_id = flow["id"]
+            logger.info(f"Created flow: {self.flow_id}")
 
         return self.flow_id
 
@@ -235,18 +254,21 @@ class SPAwnFlow:
         portal_subtitle: Optional[str] = None,
         github_token: Optional[str] = None,
         github_username: Optional[str] = None,
-        exclude_patterns: Optional[List[str]] = None,
-        include_patterns: Optional[List[str]] = None,
-        exclude_regex: Optional[List[str]] = None,
-        include_regex: Optional[List[str]] = None,
-        max_depth: Optional[int] = None,
+        exclude_patterns: Optional[List[str]] = [],
+        include_patterns: Optional[List[str]] = [],
+        exclude_regex: Optional[List[str]] = [],
+        include_regex: Optional[List[str]] = [],
+        max_depth: Optional[int] = 3,
+        batch_size: Optional[int] = 100,
         follow_symlinks: bool = False,
-        polling_rate: Optional[float] = None,
+        polling_rate: Optional[float] = 1,
         ignore_dot_dirs: bool = True,
         visible_to: Optional[List[str]] = None,
         label: Optional[str] = None,
         wait: bool = False,
         timeout: int = 3600,
+        save_json: bool = False,
+        json_dir: Optional[str] = None,
     ) -> Union[str, Dict[str, Any]]:
         """
         Run the SPAwn Flow.
@@ -268,6 +290,7 @@ class SPAwnFlow:
             exclude_regex: Regex patterns to exclude from crawling.
             include_regex: Regex patterns to include in crawling.
             max_depth: Maximum depth to crawl.
+            batch_size: The size of batches to ingest to Search
             follow_symlinks: Whether to follow symbolic links.
             polling_rate: Time in seconds to wait between file operations.
             ignore_dot_dirs: Whether to ignore directories starting with a dot.
@@ -275,6 +298,8 @@ class SPAwnFlow:
             label: Label for the flow run.
             wait: Whether to wait for the flow to complete.
             timeout: Timeout in seconds for waiting for the flow to complete.
+            save_json: Whether to save metadata to a json file
+            json_dir: Where to save json output
 
         Returns:
             If wait is True, returns the flow result.
@@ -284,6 +309,7 @@ class SPAwnFlow:
             self.create_flow()
 
         flow_client = self._get_flow_client()
+        specific_flow_client = self._get_specific_flow_client(self.flow_id)
 
         # Prepare flow input
         flow_input = {
@@ -295,6 +321,17 @@ class SPAwnFlow:
             "search_index": search_index,
             "portal_name": portal_name,
             "portal_title": portal_title,
+            "exclude_patterns": exclude_patterns,
+            "include_patterns": include_patterns,
+            "exclude_regex": exclude_regex,
+            "include_regex": include_regex,
+            "max_depth": max_depth,
+            "batch_size": batch_size,
+            "ignore_dot_dirs": ignore_dot_dirs,
+            "save_json": save_json,
+            "json_dir": json_dir,
+            "polling_rate": polling_rate,
+            "follow_symlinks": follow_symlinks,
         }
 
         # Add optional parameters
@@ -304,30 +341,13 @@ class SPAwnFlow:
             flow_input["github_token"] = github_token
         if github_username is not None:
             flow_input["github_username"] = github_username
-        if exclude_patterns is not None:
-            flow_input["exclude_patterns"] = exclude_patterns
-        if include_patterns is not None:
-            flow_input["include_patterns"] = include_patterns
-        if exclude_regex is not None:
-            flow_input["exclude_regex"] = exclude_regex
-        if include_regex is not None:
-            flow_input["include_regex"] = include_regex
-        if max_depth is not None:
-            flow_input["max_depth"] = max_depth
-        if follow_symlinks is not None:
-            flow_input["follow_symlinks"] = follow_symlinks
-        if polling_rate is not None:
-            flow_input["polling_rate"] = polling_rate
-        if ignore_dot_dirs is not None:
-            flow_input["ignore_dot_dirs"] = ignore_dot_dirs
         if visible_to is not None:
             flow_input["visible_to"] = visible_to
         else:
             flow_input["visible_to"] = ["public"]
 
         # Run flow
-        flow_run = flow_client.run_flow(
-            self.flow_id,
+        flow_run = specific_flow_client.run_flow(
             flow_input,
             label=label or f"SPAwn Flow: {portal_name}",
             tags=["spawn"],

@@ -1059,7 +1059,7 @@ def create_or_update_flow_cmd(flow_id: Optional[str]):
     try:
         flow = SPAwnFlow()
 
-        flow_id = flow.create_flow()
+        flow_id = flow.create_or_update_flow(flow_id)
 
         logger.info(f"Created flow: {flow_id}")
         print(f"Flow ID: {flow_id}")
@@ -1172,6 +1172,16 @@ def create_or_update_flow_cmd(flow_id: Optional[str]):
     default=3600,
     help="Timeout in seconds for waiting for the flow to complete",
 )
+@click.option(
+    "--save-json",
+    default=True,
+    help="Whether to save metadata as a json file",
+)
+@click.option(
+    "--json-dir",
+    type=str,
+    help="Where to save json output",
+)
 def run_flow_cmd(
     flow_id: Optional[str],
     compute_endpoint_id: str,
@@ -1193,6 +1203,8 @@ def run_flow_cmd(
     visible_to: List[str],
     wait: bool,
     timeout: int,
+    save_json: bool,
+    json_dir: Optional[str],
 ):
     """
     Run a Globus Flow for SPAwn.
@@ -1216,8 +1228,9 @@ def run_flow_cmd(
     try:
         # Register functions with Globus Compute
         function_ids = register_functions(compute_endpoint)
-        compute_function_id = function_ids["remote_crawl_directory"]
+        crawl_function_id = function_ids["remote_crawl_directory"]
         portal_function_id = function_ids["remote_create_portal"]
+        ingest_function_id = function_ids["ingest_metadata_from_file"]
 
         # Create or get flow
         flow = SPAwnFlow(
@@ -1231,8 +1244,8 @@ def run_flow_cmd(
         # Run flow
         result = flow.run_flow(
             compute_endpoint_id=compute_endpoint,
-            compute_crawl_function_id=compute_function_id,
-            compute_ingest_function_id=function_ids["ingest_metadata_from_file"],
+            compute_crawl_function_id=crawl_function_id,
+            compute_ingest_function_id=ingest_function_id,
             compute_create_portal_function_id=portal_function_id,
             directory_path=directory,
             search_index=search_index,
@@ -1252,6 +1265,8 @@ def run_flow_cmd(
             visible_to=visible_to_list,
             wait=wait,
             timeout=timeout,
+            save_json=save_json,
+            json_dir=json_dir,
         )
 
         if wait:

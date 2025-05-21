@@ -46,7 +46,7 @@ def remote_crawl_directory(
         ignore_dot_dirs: Whether to ignore directories starting with a dot.
 
     Returns:
-        List of metadata dictionaries for each file.
+        List of metadata dictionaries for each file or path to saved json.
     """
     # Import required modules
     # These imports are done here to avoid dependency issues
@@ -101,13 +101,13 @@ def remote_crawl_directory(
     if save_json and json_dir:
         try:
             json_dir_path = Path(json_dir)
-            save_metadata_to_json(
+            json_output_path = save_metadata_to_json(
                 file_path_or_metadata=metadata_dict, output_dir=json_dir_path
             )
             print(
                 f"Saved metadata for {len(metadata_dict)} files to JSON in {json_dir}"
             )
-            return str(json_dir_path)
+            return str(json_output_path)
         except Exception as e:
             print(f"Error saving metadata to JSON: {e}")
 
