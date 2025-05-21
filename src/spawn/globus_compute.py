@@ -353,7 +353,7 @@ def remote_crawl(
 
 def remote_create_portal(
     new_name: str,
-    index_name: str,
+    search_index: str,
     description: Optional[str] = None,
     organization: Optional[str] = None,
     token: Optional[str] = None,
@@ -373,7 +373,7 @@ def remote_create_portal(
 
     Args:
         new_name: Name for the forked repository.
-        index_name: UUID of the Globus Search index.
+        search_index: UUID of the Globus Search index.
         description: Description for the new repository.
         organization: Organization to create the fork in. If None, creates in the user's account.
         token: GitHub personal access token. If None, uses the token from config or environment.
@@ -407,76 +407,77 @@ def remote_create_portal(
     from spawn.github import fork_template_portal, configure_static_json, GitHubClient
 
     # Step 1: Fork the template portal
-    with tempfile.TemporaryDirectory() as temp_dir:
-        clone_dir = Path(temp_dir) / new_name
+    # with tempfile.TemporaryDirectory() as temp_dir:
+    temp_dir = "/tmp/spawn_test/clones"
+    clone_dir = Path(temp_dir) / new_name
 
-        # Fork and clone the repository
-        fork_result = fork_template_portal(
-            new_name=new_name,
-            description=description,
-            organization=organization,
-            token=token,
-            username=username,
-            clone_dir=clone_dir,
-        )
+    # Fork and clone the repository
+    fork_result = fork_template_portal(
+        new_name=new_name,
+        description=description,
+        organization=organization,
+        token=token,
+        username=username,
+        clone_dir=clone_dir,
+    )
 
-        # Get repository owner
-        owner = organization or username
+    # Get repository owner
+    owner = organization or username
+    if not owner:
+        # Try to get username from the fork result
+        owner = fork_result["repository"].get("owner", {}).get("login")
         if not owner:
-            # Try to get username from the fork result
-            owner = fork_result["repository"].get("owner", {}).get("login")
-            if not owner:
-                raise ValueError("Could not determine repository owner")
+            raise ValueError("Could not determine repository owner")
 
-        # Step 2: Configure the portal
-        static_json_path = configure_static_json(
-            repo_dir=clone_dir,
-            index_name=index_name,
-            portal_title=portal_title,
-            portal_subtitle=portal_subtitle,
-            additional_config=additional_config,
-            push_to_github=True,
-            repo_owner=owner,
-            repo_name=new_name,
-            token=token,
-            username=username,
-            commit_message="Configure portal",
-            branch="main",
-        )
+    # Step 2: Configure the portal
+    static_json_path = configure_static_json(
+        repo_dir=clone_dir,
+        search_index=search_index,
+        portal_title=portal_title,
+        portal_subtitle=portal_subtitle,
+        additional_config=additional_config,
+        push_to_github=True,
+        repo_owner=owner,
+        repo_name=new_name,
+        token=token,
+        username=username,
+        commit_message="Configure portal",
+        branch="main",
+    )
 
-        # Step 3: Enable GitHub Pages and Actions if requested
-        if enable_pages or enable_actions:
-            client = GitHubClient(token=token, username=username)
+    # Step 3: Enable GitHub Pages and Actions if requested
+    if enable_pages or enable_actions:
+        client = GitHubClient(token=token, username=username)
 
-            if enable_pages:
-                pages_result = client.enable_github_pages(
-                    repo_owner=owner,
-                    repo_name=new_name,
-                    branch=pages_branch,
-                    path=pages_path,
-                )
+        if enable_pages:
+            pages_result = client.enable_github_pages(
+                repo_owner=owner,
+                repo_name=new_name,
+                branch=pages_branch,
+                path=pages_path,
+            )
 
-            if enable_actions:
-                actions_result = client.enable_github_actions(
-                    repo_owner=owner,
-                    repo_name=new_name,
-                )
+        if enable_actions:
+            actions_result = client.enable_github_actions(
+                repo_owner=owner,
+                repo_name=new_name,
+            )
 
-        # Return information about the created portal
-        result = {
-            "repository": fork_result["repository"],
-            "portal_url": f"https://{owner}.github.io/{new_name}",
-            "repository_url": f"https://github.com/{owner}/{new_name}",
-            "index_name": index_name,
-        }
+    # Return information about the created portal
+    result = {
+        "repository": fork_result["repository"],
+        "portal_url": f"https://{owner}.github.io/{new_name}",
+        "repository_url": f"https://github.com/{owner}/{new_name}",
+        "search_index": search_index,
+    }
 
-        return result
+    return result
 
 
 def create_portal_remotely(
     endpoint_id: str,
     new_name: str,
-    index_name: str,
+    search_index: str,
     description: Optional[str] = None,
     organization: Optional[str] = None,
     token: Optional[str] = None,
@@ -497,7 +498,7 @@ def create_portal_remotely(
     Args:
         endpoint_id: Globus Compute endpoint ID.
         new_name: Name for the forked repository.
-        index_name: UUID of the Globus Search index.
+        search_index: UUID of the Globus Search index.
         description: Description for the new repository.
         organization: Organization to create the fork in. If None, creates in the user's account.
         token: GitHub personal access token. If None, uses the token from config or environment.
@@ -523,7 +524,7 @@ def create_portal_remotely(
     task = gce.submit(
         remote_create_portal,
         new_name=new_name,
-        index_name=index_name,
+        search_index=search_index,
         description=description,
         organization=organization,
         token=token,
@@ -549,7 +550,7 @@ def create_portal_remotely(
     result = task.result(timeout=timeout)
 
     logger.info(f"Portal creation task {task.task_id} completed")
-
+    print(result)
     return result
 
 

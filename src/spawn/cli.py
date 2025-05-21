@@ -407,7 +407,7 @@ def fork_portal(
     "repo_dir", type=click.Path(exists=True, file_okay=False, path_type=Path)
 )
 @click.option(
-    "--index-name",
+    "--search-index",
     required=True,
     help="UUID of the Globus Search index",
 )
@@ -473,7 +473,7 @@ def fork_portal(
 )
 def configure_portal(
     repo_dir: Path,
-    index_name: str,
+    search_index: str,
     title: Optional[str],
     subtitle: Optional[str],
     config_file: Optional[Path],
@@ -519,7 +519,7 @@ def configure_portal(
         # Configure static.json
         static_json_path = configure_static_json(
             repo_dir=repo_dir,
-            index_name=index_name,
+            search_index=search_index,
             portal_title=title,
             portal_subtitle=subtitle,
             additional_config=additional_config,
@@ -821,7 +821,7 @@ def remote_crawl_cmd(
     help="Name for the forked repository",
 )
 @click.option(
-    "--index-name",
+    "--search-index",
     required=True,
     help="UUID of the Globus Search index",
 )
@@ -888,7 +888,7 @@ def remote_crawl_cmd(
 def create_portal_cmd(
     endpoint_id: str,
     name: str,
-    index_name: str,
+    search_index: str,
     description: Optional[str],
     organization: Optional[str],
     token: Optional[str],
@@ -936,7 +936,7 @@ def create_portal_cmd(
         result = create_portal_remotely(
             endpoint_id=endpoint,
             new_name=name,
-            index_name=index_name,
+            search_index=search_index,
             description=description,
             organization=organization,
             token=github_token,

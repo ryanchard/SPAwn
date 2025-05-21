@@ -12,6 +12,7 @@ import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Union
 
+import jinja2
 import requests
 
 from spawn.config import config
@@ -420,7 +421,7 @@ def fork_template_portal(
 
 def configure_static_json(
     repo_dir: Union[str, Path],
-    index_name: str,
+    search_index: str,
     portal_title: Optional[str] = None,
     portal_subtitle: Optional[str] = None,
     additional_config: Optional[Dict[str, Any]] = None,
@@ -437,7 +438,7 @@ def configure_static_json(
 
     Args:
         repo_dir: Path to the repository directory.
-        index_name: UUID of the Globus Search index.
+        search_index: UUID of the Globus Search index.
         portal_title: Title for the portal.
         portal_subtitle: Subtitle for the portal.
         additional_config: Additional configuration to add to the static.json file.
@@ -455,21 +456,31 @@ def configure_static_json(
     repo_dir = Path(repo_dir).expanduser().absolute()
     static_json_path = repo_dir / "static.json"
 
-    # Create default configuration
-    config_data = {
-        "index": {
-            "uuid": index_name,
-            "name": index_name,
-        },
-        "branding": {},
+    # Get the template file path
+    template_path = Path(__file__).parent / "templates" / "static.json.template"
+
+    # Set up Jinja2 environment
+    template_dir = Path(__file__).parent / "templates"
+    env = jinja2.Environment(
+        loader=jinja2.FileSystemLoader(template_dir),
+        autoescape=jinja2.select_autoescape(),
+    )
+
+    # Load the template
+    template = env.get_template("static.json.template")
+
+    # Prepare template variables
+    template_vars = {
+        "index_name": search_index,
+        "portal_title": portal_title or "Search Portal",
+        "portal_subtitle": portal_subtitle or "Search and discover data",
     }
 
-    # Add portal title and subtitle if provided
-    if portal_title:
-        config_data["branding"]["title"] = portal_title
+    # Render the template
+    rendered_content = template.render(**template_vars)
 
-    if portal_subtitle:
-        config_data["branding"]["subtitle"] = portal_subtitle
+    # Convert to JSON object to allow for additional configuration
+    config_data = json.loads(rendered_content)
 
     # Add additional configuration if provided
     if additional_config:
