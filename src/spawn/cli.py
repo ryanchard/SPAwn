@@ -1137,6 +1137,7 @@ def create_or_update_flow_cmd(flow_id: Optional[str]):
     "--max-depth",
     "-d",
     type=int,
+    default=3,
     help="Maximum depth to crawl",
 )
 @click.option(
@@ -1148,6 +1149,7 @@ def create_or_update_flow_cmd(flow_id: Optional[str]):
     "--polling-rate",
     "-p",
     type=float,
+    default=1,
     help="Time in seconds to wait between file operations",
 )
 @click.option(
