@@ -4,17 +4,15 @@ Globus Search integration for SPAwn.
 This module provides functionality for publishing metadata to Globus Search.
 """
 
-import json
 import logging
 import time
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
-
-from globus_sdk import SearchClient
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
 
 import requests
-
-from spawn.config import config
+from globus_sdk import SearchClient
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +37,7 @@ class GlobusSearchClient:
         self.index_uuid = index_uuid
         self.search_client = search_client
         self.base_url = base_url
-    
+
     def _get_headers(self) -> Dict[str, str]:
         """
         Get headers for Globus Search API requests.
@@ -52,7 +50,7 @@ class GlobusSearchClient:
         }
 
         return headers
-    
+
     def ingest_entry(self, entry: Dict[str, Any]) -> Dict[str, Any]:
         """
         Ingest a single entry into Globus Search.
@@ -67,11 +65,11 @@ class GlobusSearchClient:
             ValueError: If the ingest fails.
         """
         url = f"{self.base_url}/ingest/{self.index_uuid}"
-        
+
         # Ensure entry has required fields
         if "subject" not in entry:
             raise ValueError("Entry must have a 'subject' field")
-        
+
         # Create ingest document
         ingest_doc = {
             "ingest_type": "GMetaEntry",
@@ -79,16 +77,19 @@ class GlobusSearchClient:
                 "gmeta": [entry],
             },
         }
-        
+
         response = self.search_client.ingest(self.index_uuid, ingest_doc)
 
-        
         if response.status_code != 200:
-            raise ValueError(f"Failed to ingest entry: {response.json().get('error', response.text)}")
-        
+            raise ValueError(
+                f"Failed to ingest entry: {response.json().get('error', response.text)}"
+            )
+
         return response.json()
-    
-    def ingest_entries(self, entries: List[Dict[str, Any]], batch_size: int = 100) -> Dict[str, Any]:
+
+    def ingest_entries(
+        self, entries: List[Dict[str, Any]], batch_size: int = 100
+    ) -> Dict[str, Any]:
         """
         Ingest multiple entries into Globus Search.
 
@@ -102,14 +103,14 @@ class GlobusSearchClient:
         Raises:
             ValueError: If the ingest fails.
         """
-        
+
         # Process entries in batches
         success_count = 0
         failed_count = 0
-        
+
         for i in range(0, len(entries), batch_size):
-            batch = entries[i:i+batch_size]
-            
+            batch = entries[i : i + batch_size]
+
             # Create ingest document
             ingest_doc = {
                 "ingest_type": "GMetaList",
@@ -117,29 +118,31 @@ class GlobusSearchClient:
                     "gmeta": batch,
                 },
             }
-            
+
             try:
                 response = self.search_client.ingest(self.index_uuid, ingest_doc)
-                
+
                 logger.info(response)
 
                 if response.success != "true":
-                    logger.error(f"Failed to ingest batch: {response.json().get('error', response.text)}")
+                    logger.error(
+                        f"Failed to ingest batch: {response.json().get('error', response.text)}"
+                    )
                     failed_count += len(batch)
                 else:
                     success_count += len(batch)
-                    
+
                 # Add a small delay to avoid rate limiting
                 time.sleep(0.1)
             except Exception as e:
                 logger.error(f"Error ingesting batch: {e}")
                 failed_count += len(batch)
-        
+
         return {
             "success": success_count,
             "failed": failed_count,
         }
-    
+
     def get_entry(self, subject: str) -> Optional[Dict[str, Any]]:
         """
         Get an entry from Globus Search.
@@ -151,23 +154,25 @@ class GlobusSearchClient:
             Entry if found, None otherwise.
         """
         url = f"{self.base_url}/get_entry/{self.index_uuid}/{subject}"
-        
+
         response = requests.get(
             url,
             headers=self._get_headers(),
         )
-        
+
         if response.status_code != 200:
-            logger.error(f"Failed to get entry: {response.json().get('error', response.text)}")
+            logger.error(
+                f"Failed to get entry: {response.json().get('error', response.text)}"
+            )
             return None
-        
+
         result = response.json()
-        
+
         if "gmeta" in result and len(result["gmeta"]) > 0:
             return result["gmeta"][0]
-        
+
         return None
-    
+
     def delete_entry(self, subject: str) -> bool:
         """
         Delete an entry from Globus Search.
@@ -179,21 +184,23 @@ class GlobusSearchClient:
             True if the entry was deleted, False otherwise.
         """
         url = f"{self.base_url}/delete_by_subject/{self.index_uuid}"
-        
+
         data = {
             "subjects": [subject],
         }
-        
+
         response = requests.post(
             url,
             headers=self._get_headers(),
             json=data,
         )
-        
+
         if response.status_code != 200:
-            logger.error(f"Failed to delete entry: {response.json().get('error', response.text)}")
+            logger.error(
+                f"Failed to delete entry: {response.json().get('error', response.text)}"
+            )
             return False
-        
+
         return True
 
 
@@ -217,14 +224,14 @@ def metadata_to_gmeta_entry(
     """
     # Create subject from file path
     subject = f"{subject_prefix}{file_path}"
-    
+
     # Create GMetaEntry
     entry = {
         "subject": subject,
         "visible_to": visible_to or ["public"],
         "content": metadata,
     }
-    
+
     return entry
 
 
@@ -250,14 +257,13 @@ def publish_metadata(
     Returns:
         Dictionary with counts of successful and failed publish operations.
     """
-    from spawn.extractors.metadata import extract_metadata
-    
+
     # Create Globus Search client
     client = GlobusSearchClient(
         index_uuid=index_uuid,
         search_client=search_client,
     )
-    
+
     # Extract metadata and create GMetaEntries
     entries = []
 
@@ -269,8 +275,8 @@ def publish_metadata(
             subject_prefix=subject_prefix,
             visible_to=visible_to,
         )
-                
+
         entries.append(entry)
-    
+
     # Ingest entries
     return client.ingest_entries(entries, batch_size=batch_size)

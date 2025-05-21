@@ -5,9 +5,12 @@ This package contains metadata extractors for different file types.
 """
 
 import logging
-from typing import List, Type
+from typing import List
+from typing import Type
 
-from spawn.extractors.metadata import MetadataExtractor, register_extractor
+from spawn.extractors.metadata import MetadataExtractor
+from spawn.extractors.metadata import register_extractor
+
 from .main import cli
 
 logger = logging.getLogger(__name__)
@@ -18,6 +21,7 @@ def register_builtin_extractors() -> None:
     # Import and register all extractors
     try:
         from spawn.extractors.text import TextMetadataExtractor
+
         register_extractor(TextMetadataExtractor)
     except ImportError:
         logger.debug("TextMetadataExtractor not available")

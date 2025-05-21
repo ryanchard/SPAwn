@@ -10,10 +10,12 @@ import os
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Union
+from typing import Any
+from typing import Dict
+from typing import Optional
+from typing import Union
 
 import requests
-
 from spawn.config import config
 
 logger = logging.getLogger(__name__)
@@ -36,16 +38,24 @@ class GitHubClient:
             username: GitHub username. If None, uses the username from config or environment.
             api_url: GitHub API URL.
         """
-        self.token = token or config.get("github", {}).get("token") or os.environ.get("GITHUB_TOKEN")
-        self.username = username or config.get("github", {}).get("username") or os.environ.get("GITHUB_USERNAME")
+        self.token = (
+            token
+            or config.get("github", {}).get("token")
+            or os.environ.get("GITHUB_TOKEN")
+        )
+        self.username = (
+            username
+            or config.get("github", {}).get("username")
+            or os.environ.get("GITHUB_USERNAME")
+        )
         self.api_url = api_url
-        
+
         if not self.token:
             logger.warning("No GitHub token provided. Some operations may fail.")
-        
+
         if not self.username:
             logger.warning("No GitHub username provided. Some operations may fail.")
-    
+
     def _get_headers(self) -> Dict[str, str]:
         """
         Get headers for GitHub API requests.
@@ -56,12 +66,12 @@ class GitHubClient:
         headers = {
             "Accept": "application/vnd.github.v3+json",
         }
-        
+
         if self.token:
             headers["Authorization"] = f"token {self.token}"
-        
+
         return headers
-    
+
     def create_fork(
         self,
         repo_owner: str,
@@ -88,41 +98,47 @@ class GitHubClient:
         """
         if not self.token:
             raise ValueError("GitHub token is required to create a fork")
-        
+
         # Create fork
         fork_url = f"{self.api_url}/repos/{repo_owner}/{repo_name}/forks"
         fork_data = {}
-        
+
         if organization:
             fork_data["organization"] = organization
-        
+
         response = requests.post(fork_url, headers=self._get_headers(), json=fork_data)
-        
+
         if response.status_code != 202:
-            raise ValueError(f"Failed to create fork: {response.json().get('message', response.text)}")
-        
+            raise ValueError(
+                f"Failed to create fork: {response.json().get('message', response.text)}"
+            )
+
         fork_info = response.json()
         logger.info(f"Created fork: {fork_info['full_name']}")
-        
+
         # Rename repository if needed
         if new_name and new_name != repo_name:
             owner = organization or self.username
             rename_url = f"{self.api_url}/repos/{owner}/{repo_name}"
             rename_data = {"name": new_name}
-            
+
             if description:
                 rename_data["description"] = description
-            
-            response = requests.patch(rename_url, headers=self._get_headers(), json=rename_data)
-            
+
+            response = requests.patch(
+                rename_url, headers=self._get_headers(), json=rename_data
+            )
+
             if response.status_code != 200:
-                logger.warning(f"Failed to rename repository: {response.json().get('message', response.text)}")
+                logger.warning(
+                    f"Failed to rename repository: {response.json().get('message', response.text)}"
+                )
             else:
                 fork_info = response.json()
                 logger.info(f"Renamed repository to: {fork_info['full_name']}")
-        
+
         return fork_info
-    
+
     def configure_pages_and_actions(
         self,
         repo_owner: str,
@@ -145,7 +161,9 @@ class GitHubClient:
         headers = self._get_headers()
 
         # Enable Actions with write access
-        actions_url = f"{self.api_url}/repos/{repo_owner}/{repo_name}/actions/permissions"
+        actions_url = (
+            f"{self.api_url}/repos/{repo_owner}/{repo_name}/actions/permissions"
+        )
         actions_payload = {
             "enabled": True,
             "allowed_actions": "all",
@@ -167,8 +185,9 @@ class GitHubClient:
         if r2.status_code not in [201, 204]:
             logger.warning(f"Failed to enable GitHub Pages: {r2.text}")
         else:
-            logger.info(f"Enabled GitHub Pages for {repo_owner}/{repo_name} from branch {branch}")
-
+            logger.info(
+                f"Enabled GitHub Pages for {repo_owner}/{repo_name} from branch {branch}"
+            )
 
     def clone_repository(
         self,
@@ -198,14 +217,14 @@ class GitHubClient:
         else:
             target_dir = Path(target_dir).expanduser().absolute()
             target_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Clone repository
         repo_url = f"https://github.com/{repo_owner}/{repo_name}.git"
-        
+
         if self.token:
             # Use token for authentication
             repo_url = f"https://{self.token}@github.com/{repo_owner}/{repo_name}.git"
-        
+
         try:
             subprocess.run(
                 ["git", "clone", "--branch", branch, repo_url, str(target_dir)],
@@ -217,7 +236,7 @@ class GitHubClient:
             return target_dir
         except subprocess.CalledProcessError as e:
             raise ValueError(f"Failed to clone repository: {e.stderr}")
-    
+
     def push_file(
         self,
         repo_owner: str,
@@ -246,44 +265,48 @@ class GitHubClient:
         """
         if not self.token:
             raise ValueError("GitHub token is required to push files")
-        
+
         # Get the current file to get its SHA
         url = f"{self.api_url}/repos/{repo_owner}/{repo_name}/contents/{file_path}"
         params = {"ref": branch}
-        
+
         response = requests.get(url, headers=self._get_headers(), params=params)
-        
+
         # Prepare content
         if isinstance(content, dict):
             content = json.dumps(content, indent=2)
-        
+
         if isinstance(content, str):
             import base64
+
             content = base64.b64encode(content.encode("utf-8")).decode("utf-8")
         elif isinstance(content, bytes):
             import base64
+
             content = base64.b64encode(content).decode("utf-8")
-        
+
         # Prepare request data
         data = {
             "message": message,
             "content": content,
             "branch": branch,
         }
-        
+
         # If file exists, add its SHA
         if response.status_code == 200:
             data["sha"] = response.json()["sha"]
-        
+
         # Push file
         response = requests.put(url, headers=self._get_headers(), json=data)
-        
+
         if response.status_code not in [200, 201]:
-            raise ValueError(f"Failed to push file: {response.json().get('message', response.text)}")
-        
+            raise ValueError(
+                f"Failed to push file: {response.json().get('message', response.text)}"
+            )
+
         result = response.json()
         logger.info(f"Pushed file {file_path} to {repo_owner}/{repo_name}")
-        
+
         return result
 
 
@@ -311,7 +334,7 @@ def fork_template_portal(
     """
     # Create GitHub client
     client = GitHubClient(token=token, username=username)
-    
+
     # Fork repository
     fork_info = client.create_fork(
         repo_owner="globus",
@@ -320,12 +343,12 @@ def fork_template_portal(
         organization=organization,
         description=description,
     )
-    
+
     result = {
         "repository": fork_info,
         "clone_path": None,
     }
-    
+
     # Clone repository if requested
     if clone_dir is not None:
         owner = organization or client.username
@@ -335,7 +358,7 @@ def fork_template_portal(
             target_dir=clone_dir,
         )
         result["clone_path"] = str(clone_path)
-    
+
     return result
 
 
@@ -375,7 +398,7 @@ def configure_static_json(
     """
     repo_dir = Path(repo_dir).expanduser().absolute()
     static_json_path = repo_dir / "static.json"
-    
+
     # Create default configuration
     config_data = {
         "index": {
@@ -384,36 +407,38 @@ def configure_static_json(
         },
         "branding": {},
     }
-    
+
     # Add portal title and subtitle if provided
     if portal_title:
         config_data["branding"]["title"] = portal_title
-    
+
     if portal_subtitle:
         config_data["branding"]["subtitle"] = portal_subtitle
-    
+
     # Add additional configuration if provided
     if additional_config:
         config_data.update(additional_config)
-    
+
     # Write configuration to static.json
     with open(static_json_path, "w") as f:
         json.dump(config_data, f, indent=2)
-    
+
     logger.info(f"Configured static.json at {static_json_path}")
-    
+
     # Push changes to GitHub if requested
     if push_to_github:
         if not repo_owner or not repo_name:
-            raise ValueError("repo_owner and repo_name are required when push_to_github is True")
-        
+            raise ValueError(
+                "repo_owner and repo_name are required when push_to_github is True"
+            )
+
         # Create GitHub client
         client = GitHubClient(token=token, username=username)
-        
+
         # Read the file content
         with open(static_json_path, "r") as f:
             content = f.read()
-        
+
         # Push the file
         client.push_file(
             repo_owner=repo_owner,
@@ -423,7 +448,35 @@ def configure_static_json(
             message=commit_message,
             branch=branch,
         )
-        
+
         logger.info(f"Pushed static.json to {repo_owner}/{repo_name}")
-    
+
     return static_json_path
+
+
+def configure_pages_and_actions(
+    repo_owner: str,
+    repo_name: str,
+    branch: str = "gh-pages",
+    pages_path: str = "/",
+    token: Optional[str] = None,
+    username: Optional[str] = None,
+) -> None:
+    """
+    Configure GitHub Actions permissions and enable GitHub Pages deployment for a repository.
+
+    Args:
+        repo_owner: Owner of the repository.
+        repo_name: Name of the repository.
+        branch: Branch to deploy from (e.g., 'gh-pages').
+        pages_path: Path in the repo to deploy (default is root).
+        token: GitHub personal access token. If None, uses the token from config or environment.
+        username: GitHub username. If None, uses the username from config or environment.
+    """
+    client = GitHubClient(token=token, username=username)
+    client.configure_pages_and_actions(
+        repo_owner=repo_owner,
+        repo_name=repo_name,
+        branch=branch,
+        pages_path=pages_path,
+    )

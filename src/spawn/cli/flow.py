@@ -3,20 +3,26 @@ Globus Flow commands for SPAwn CLI.
 
 Handles creation and running of Globus Flows.
 """
-from typing import Optional, List
-import click
+
 import logging
 import sys
+from typing import List
+from typing import Optional
+
+import click
+
 from spawn.config import config
-from spawn.globus.globus_flow import SPAwnFlow
 from spawn.globus.globus_compute import register_functions
+from spawn.globus.globus_flow import SPAwnFlow
 
 logger = logging.getLogger(__name__)
+
 
 @click.group()
 def flow() -> None:
     """Globus Flow operations."""
     pass
+
 
 @flow.command(name="create")
 @click.option("--client-id", help="Globus Auth client ID")
@@ -39,29 +45,78 @@ def create_flow_cmd(client_id: Optional[str], client_secret: Optional[str]) -> N
         logger.error(f"Error creating flow: {e}")
         sys.exit(1)
 
+
 @flow.command(name="run")
 @click.option("--flow-id", help="Globus Flow ID")
 @click.option("--compute-endpoint-id", required=True, help="Globus Compute endpoint ID")
-@click.option("--directory", required=True, help="Path to the directory to crawl on the remote filesystem")
+@click.option(
+    "--directory",
+    required=True,
+    help="Path to the directory to crawl on the remote filesystem",
+)
 @click.option("--search-index", required=True, help="Globus Search index UUID")
 @click.option("--portal-name", required=True, help="Name for the portal repository")
 @click.option("--portal-title", required=True, help="Title for the portal")
 @click.option("--portal-subtitle", help="Subtitle for the portal")
 @click.option("--github-token", help="GitHub personal access token")
 @click.option("--github-username", help="GitHub username")
-@click.option("--exclude", "-e", multiple=True, help="Glob pattern to exclude from crawling (can be used multiple times)")
-@click.option("--include", "-i", multiple=True, help="Glob pattern to include in crawling (can be used multiple times)")
-@click.option("--exclude-regex", "-E", multiple=True, help="Regex pattern to exclude from crawling (can be used multiple times)")
-@click.option("--include-regex", "-I", multiple=True, help="Regex pattern to include in crawling (can be used multiple times)")
+@click.option(
+    "--exclude",
+    "-e",
+    multiple=True,
+    help="Glob pattern to exclude from crawling (can be used multiple times)",
+)
+@click.option(
+    "--include",
+    "-i",
+    multiple=True,
+    help="Glob pattern to include in crawling (can be used multiple times)",
+)
+@click.option(
+    "--exclude-regex",
+    "-E",
+    multiple=True,
+    help="Regex pattern to exclude from crawling (can be used multiple times)",
+)
+@click.option(
+    "--include-regex",
+    "-I",
+    multiple=True,
+    help="Regex pattern to include in crawling (can be used multiple times)",
+)
 @click.option("--max-depth", "-d", type=int, help="Maximum depth to crawl")
-@click.option("--follow-symlinks/--no-follow-symlinks", default=False, help="Whether to follow symbolic links")
-@click.option("--polling-rate", "-p", type=float, help="Time in seconds to wait between file operations")
-@click.option("--ignore-dot-dirs/--include-dot-dirs", default=True, help="Whether to ignore directories starting with a dot")
-@click.option("--visible-to", multiple=True, help="Globus Auth identities that can see entries (can be used multiple times)")
+@click.option(
+    "--follow-symlinks/--no-follow-symlinks",
+    default=False,
+    help="Whether to follow symbolic links",
+)
+@click.option(
+    "--polling-rate",
+    "-p",
+    type=float,
+    help="Time in seconds to wait between file operations",
+)
+@click.option(
+    "--ignore-dot-dirs/--include-dot-dirs",
+    default=True,
+    help="Whether to ignore directories starting with a dot",
+)
+@click.option(
+    "--visible-to",
+    multiple=True,
+    help="Globus Auth identities that can see entries (can be used multiple times)",
+)
 @click.option("--client-id", help="Globus Auth client ID")
 @click.option("--client-secret", help="Globus Auth client secret")
-@click.option("--wait/--no-wait", default=False, help="Whether to wait for the flow to complete")
-@click.option("--timeout", type=int, default=3600, help="Timeout in seconds for waiting for the flow to complete")
+@click.option(
+    "--wait/--no-wait", default=False, help="Whether to wait for the flow to complete"
+)
+@click.option(
+    "--timeout",
+    type=int,
+    default=3600,
+    help="Timeout in seconds for waiting for the flow to complete",
+)
 def run_flow_cmd(
     flow_id: Optional[str],
     compute_endpoint_id: str,
@@ -90,6 +145,7 @@ def run_flow_cmd(
     Run a Globus Flow for SPAwn.
     """
     import json
+
     flow_id = flow_id or config.globus_flow_id
     compute_endpoint = compute_endpoint_id or config.globus_compute_endpoint_id
     if not compute_endpoint:
@@ -145,4 +201,4 @@ def run_flow_cmd(
             print(f"Flow run ID: {result}")
     except Exception as e:
         logger.error(f"Error running flow: {e}")
-        sys.exit(1) 
+        sys.exit(1)

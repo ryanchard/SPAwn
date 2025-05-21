@@ -4,19 +4,19 @@
 globus:
   # Globus Auth token with search.ingest scope
   # auth_token: "your-globus-auth-token"
-  
+
   # Globus Search index UUID
   search_index: "your-search-index-uuid"
-  
+
   # List of Globus Auth identities that can see entries
   visible_to: ["public"]
-  
+
   # Globus Compute endpoint ID
   # compute_endpoint_id: "your-compute-endpoint-id"
-  
+
   # Globus Flow ID (if you have an existing flow)
   # flow_id: "your-flow-id"
-  
+
   # Globus Auth client ID and secret (for creating flows)
   # client_id: "your-client-id"
   # client_secret: "your-client-secret"
@@ -29,10 +29,10 @@ output:
 crawler:
   # Time in seconds to wait between file operations (to reduce system load)
   polling_rate: 0.01
-  
+
   # Whether to ignore directories starting with a dot (e.g., .git, .vscode)
   ignore_dot_dirs: true
-  
+
   # Regex patterns to exclude from crawling
   exclude_regex:
     - ".*\\.tmp$"          # Temporary files
@@ -41,7 +41,7 @@ crawler:
     - ".*~$"               # Backup files with tilde
     - "node_modules/.*"    # Node.js modules
     - "__pycache__/.*"     # Python cache
-  
+
   # Regex patterns to include in crawling (only these files will be processed)
   include_regex:
     - ".*\\.py$"           # Python files
@@ -52,7 +52,7 @@ crawler:
     - ".*\\.csv$"          # CSV files
     - ".*\\.pdf$"          # PDF files
     - ".*\\.(jpe?g|png|gif|svg)$"  # Image files
-  
+
   # Plugins configuration
   plugins:
     text:
@@ -67,7 +67,7 @@ crawler:
 metadata:
   # Whether to save metadata as JSON files
   save_json: true
-  
+
   # Directory to save JSON metadata files in
   json_dir: "./metadata_json"
 
@@ -76,7 +76,7 @@ github:
   # GitHub personal access token (or set GITHUB_TOKEN environment variable)
   # Required for creating repositories
   # token: "your-github-token"
-  
+
   # GitHub username (or set GITHUB_USERNAME environment variable)
   # username: "your-github-username"
 

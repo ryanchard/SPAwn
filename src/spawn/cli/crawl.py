@@ -3,19 +3,25 @@ Crawl command for SPAwn CLI.
 
 Handles directory crawling and indexing files.
 """
-from typing import List, Optional
-from pathlib import Path
+
 import logging
-import sys
+from pathlib import Path
+from typing import List
+from typing import Optional
+
 import click
+
 from spawn.config import config
 from spawn.crawler import crawl_directory
-from spawn.globus.globus_search import publish_metadata, GlobusSearchClient
+from spawn.globus.globus_search import publish_metadata
 
 logger = logging.getLogger(__name__)
 
+
 @click.command()
-@click.argument("directory", type=click.Path(exists=True, file_okay=False, path_type=Path))
+@click.argument(
+    "directory", type=click.Path(exists=True, file_okay=False, path_type=Path)
+)
 @click.option(
     "--exclude",
     "-e",
@@ -130,7 +136,9 @@ def crawl(
         return
     metadata = {}
     if save_json:
-        from spawn.extractors.metadata import extract_metadata, save_metadata_to_json
+        from spawn.extractors.metadata import extract_metadata
+        from spawn.extractors.metadata import save_metadata_to_json
+
         logger.info("Saving metadata to JSON files")
         json_count = 0
         for file_path in files:
@@ -148,17 +156,26 @@ def crawl(
     app = None
     try:
         import globus_sdk
-        app = globus_sdk.UserApp("SPAwn CLI App", client_id="367628a1-4b6a-4176-82bd-422f071d1adc")
-        app.add_scope_requirements({'search': [globus_sdk.scopes.SearchScopes.make_mutable("all")]})
+
+        app = globus_sdk.UserApp(
+            "SPAwn CLI App", client_id="367628a1-4b6a-4176-82bd-422f071d1adc"
+        )
+        app.add_scope_requirements(
+            {"search": [globus_sdk.scopes.SearchScopes.make_mutable("all")]}
+        )
         search_client = globus_sdk.SearchClient(app=app)
     except Exception as e:
         logger.error(f"Error initializing Globus SDK: {e}")
         return
-    visible_to_list = list(visible_to) if visible_to else config.globus_search_visible_to
+    visible_to_list = (
+        list(visible_to) if visible_to else config.globus_search_visible_to
+    )
     result = publish_metadata(
         metadata=metadata,
         index_uuid=index_uuid,
         search_client=search_client,
         visible_to=visible_to_list,
     )
-    logger.info(f"Published {result['success']} entries, failed to publish {result['failed']} entries") 
+    logger.info(
+        f"Published {result['success']} entries, failed to publish {result['failed']} entries"
+    )

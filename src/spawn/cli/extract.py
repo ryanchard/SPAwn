@@ -3,9 +3,12 @@ Extract command for SPAwn CLI.
 
 Handles metadata extraction from files.
 """
-from typing import Optional
+
 from pathlib import Path
+from typing import Optional
+
 import click
+
 
 @click.command(name="extract")
 @click.argument("file", type=click.Path(exists=True, dir_okay=False, path_type=Path))
@@ -25,14 +28,19 @@ import click
     type=click.Path(dir_okay=False, path_type=Path),
     help="Path to save JSON metadata file (overrides --json-dir)",
 )
-def extract_file_metadata(file: Path, save_json: bool, json_dir: Optional[Path], output: Optional[Path]) -> None:
+def extract_file_metadata(
+    file: Path, save_json: bool, json_dir: Optional[Path], output: Optional[Path]
+) -> None:
     """
     Extract metadata from a single file.
 
     FILE is the path to the file to extract metadata from.
     """
-    from spawn.extractors.metadata import extract_metadata, save_metadata_to_json
     import json
+
+    from spawn.extractors.metadata import extract_metadata
+    from spawn.extractors.metadata import save_metadata_to_json
+
     metadata = extract_metadata(file)
     print(json.dumps(metadata, indent=2, default=str))
     if save_json or output:
@@ -48,4 +56,4 @@ def extract_file_metadata(file: Path, save_json: bool, json_dir: Optional[Path],
                 json_path = save_metadata_to_json(file, metadata, json_dir)
                 print(f"\nMetadata saved to: {json_path}")
             except Exception as e:
-                print(f"\nError saving metadata to JSON: {e}") 
+                print(f"\nError saving metadata to JSON: {e}")

@@ -71,8 +71,8 @@ doc = [
 all = ["spawn[dev,doc]"]
 
 [project.urls]
-"Homepage" = ""
-"Bug Tracker" = ""
+"Homepage" = "https://github.com/ravescovi/spawn"
+"Bug Tracker" = "https://github.com/ravescovi/spawn/issues"
 
 
 [tool.black]
@@ -225,4 +225,4 @@ package-dir = {"spawn" = "src/spawn"}
 write_to = "src/spawn/_version.py"
 
 [project.scripts]
-spawn = "spawn.cli:main"
+spawn = "spawn.cli.main:main"

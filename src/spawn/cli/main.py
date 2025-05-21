@@ -3,20 +3,23 @@ Main entry point for the SPAwn CLI.
 
 This module sets up the main CLI group, logging, and configuration, and registers all subcommands.
 """
-from typing import Optional
-from pathlib import Path
+
 import logging
 import sys
+from pathlib import Path
+from typing import Optional
+
 import click
 
 from spawn.config import load_config
 
+from .compute import compute
+
 # Import subcommands/groups
 from .crawl import crawl
 from .extract import extract_file_metadata
-from .github import github
-from .compute import compute
 from .flow import flow
+from .github import github
 from .search import get_entry
 
 logging.basicConfig(
@@ -25,6 +28,7 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()],
 )
 logger = logging.getLogger(__name__)
+
 
 @click.group()
 @click.option(
@@ -53,6 +57,7 @@ def cli(config_file: Optional[Path], verbose: bool) -> None:
             logger.error(f"Error loading configuration: {e}")
             sys.exit(1)
 
+
 # Register all subcommands/groups
 cli.add_command(crawl)
 cli.add_command(extract_file_metadata)
@@ -61,9 +66,11 @@ cli.add_command(compute)
 cli.add_command(flow)
 cli.add_command(get_entry)
 
+
 def main() -> None:
     """Main entry point for the CLI."""
     cli()
 
+
 if __name__ == "__main__":
-    main() 
+    main()
