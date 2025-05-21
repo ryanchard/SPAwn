@@ -1,28 +1,22 @@
 """
-This file has been refactored. CLI commands have been moved to submodules:
-- main.py (entry point)
-- crawl.py
-- extract.py
-- github.py
-- compute.py
-- flow.py
-- search.py
+Command-line interface for SPAwn.
+
+This module provides a command-line interface for the SPAwn tool.
 """
 
 import logging
 import json
 import sys
 from pathlib import Path
-from typing import List
-from typing import Optional
+from typing import List, Optional
+
+import globus_sdk
+from globus_sdk import UserApp, ClientApp
+from globus_sdk import SearchClient, FlowsClient
 
 import click
-import globus_sdk
-from globus_sdk import SearchClient
-from globus_sdk import UserApp
 
-from spawn.config import config
-from spawn.config import load_config
+from spawn.config import config, load_config
 from spawn.crawler import crawl_directory
 from spawn.github import create_template_portal, configure_static_json
 from spawn.globus_compute import (
