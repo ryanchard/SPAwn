@@ -57,6 +57,13 @@ def register_builtin_extractors() -> None:
     except ImportError:
         logger.debug("PythonMetadataExtractor not available")
 
+    try:
+        from spawn.extractors.json import JSONMetadataExtractor
+
+        register_extractor(JSONMetadataExtractor)
+    except ImportError:
+        logger.debug("JSONMetadataExtractor not available")
+
     # try:
     #     from spawn.extractors.audio import AudioMetadataExtractor
     #     register_extractor(AudioMetadataExtractor)
