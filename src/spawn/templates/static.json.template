@@ -36,14 +36,20 @@
           "index": "{{ index_name }}",
           "facets": [
             {
-              "name": "Tags",
-              "field_name": "tags",
+              "name": "Directory",
+              "field_name": "entries[0].content.file.directory",
               "type": "terms",
               "size": 10
             },
             {
-              "name": "Region",
-              "field_name": "region",
+              "name": "Extension",
+              "field_name": "entries[0].content.file.extension",
+              "type": "terms",
+              "size": 10
+            },
+            {
+              "name": "File Size",
+              "field_name": "entries[0].content.file.size_bytes",
               "type": "terms",
               "size": 10
             }

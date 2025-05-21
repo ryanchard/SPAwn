@@ -27,7 +27,8 @@ class MetadataExtractor(ABC):
     # List of MIME types this extractor can handle
     supported_mime_types: List[str] = []
     
-    def add_common_metadata(self, file_path: Path) -> Dict[str, Any]:
+    @staticmethod
+    def add_common_metadata(file_path: Path) -> Dict[str, Any]:
         """
         Add common file metadata to the extraction results.
         
@@ -110,7 +111,7 @@ class BasicMetadataExtractor(MetadataExtractor):
             Dictionary of basic metadata.
         """
         # Get common file metadata
-        metadata = self.add_common_metadata(file_path)
+        metadata = MetadataExtractor.add_common_metadata(file_path)
         
         stat = file_path.stat()
         mime_type, encoding = mimetypes.guess_type(str(file_path))
@@ -170,8 +171,7 @@ def extract_metadata(file_path: Path) -> Dict[str, Any]:
     metadata = {}
     
     # Add common file metadata
-    base_extractor = MetadataExtractor()
-    common_metadata = base_extractor.add_common_metadata(file_path)
+    common_metadata = MetadataExtractor.add_common_metadata(file_path)
     metadata.update(common_metadata)
 
     # Get extractors for this file

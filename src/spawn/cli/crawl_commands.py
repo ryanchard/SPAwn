@@ -176,6 +176,8 @@ def crawl(
 
     # Publish metadata to Globus Search
     logger.info(f"Publishing metadata to Globus Search index: {index_uuid}")
+    print('QUITTING HERE')
+    return
 
     result = publish_metadata(
         metadata=metadata,

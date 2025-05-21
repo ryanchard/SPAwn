@@ -54,7 +54,7 @@ class TabularMetadataExtractor(MetadataExtractor):
             Dictionary of metadata.
         """
         # Get common file metadata
-        metadata = self.add_common_metadata(file_path)
+        metadata = MetadataExtractor.add_common_metadata(file_path)
 
         try:
             # Handle different file types
