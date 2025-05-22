@@ -10,7 +10,7 @@ from pathlib import Path
 
 # Add the project root to the Python path
 # This allows the test to find the spawn package when run from the tests directory
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -22,18 +22,12 @@ test_json_data = {
     "version": 1.0,
     "enabled": True,
     "tags": ["test", "json", "metadata"],
-    "config": {
-        "timeout": 30,
-        "retry": {
-            "count": 3,
-            "delay": 5
-        }
-    },
+    "config": {"timeout": 30, "retry": {"count": 3, "delay": 5}},
     "data": [
         {"id": 1, "value": "one"},
         {"id": 2, "value": "two"},
-        {"id": 3, "value": "three"}
-    ]
+        {"id": 3, "value": "three"},
+    ],
 }
 
 # Write test data to file

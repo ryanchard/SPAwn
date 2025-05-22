@@ -47,7 +47,7 @@ class PDFMetadataExtractor(MetadataExtractor):
             Dictionary of metadata.
         """
         # Get common file metadata
-        metadata = self.add_common_metadata(file_path)
+        metadata = MetadataExtractor.add_common_metadata(file_path)
 
         try:
             # Try to import PyPDF2, which is required for PDF processing
