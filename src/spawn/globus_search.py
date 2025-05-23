@@ -69,8 +69,6 @@ class GlobusSearchClient:
         Raises:
             ValueError: If the ingest fails.
         """
-        url = f"{self.base_url}/ingest/{self.index_uuid}"
-
         # Ensure entry has required fields
         if "subject" not in entry:
             raise ValueError("Entry must have a 'subject' field")
@@ -253,8 +251,6 @@ def publish_metadata(
     Returns:
         Dictionary with counts of successful and failed publish operations.
     """
-    from spawn.metadata import extract_metadata
-
     # Create Globus Search client
     client = GlobusSearchClient(
         index_uuid=index_uuid,
