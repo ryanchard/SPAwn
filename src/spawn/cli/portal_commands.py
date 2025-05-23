@@ -136,6 +136,7 @@ def create_portal_cmd(
         # Use a temporary directory if clone_dir is not provided
         if clone_dir is None:
             import tempfile
+
             clone_dir = Path(tempfile.mkdtemp())
             logger.info(f"Using temporary directory: {clone_dir}")
 
