@@ -27,40 +27,14 @@ pip install -e .
 
 ## Usage
 
-```bash
-# Configure your crawler
-spawn config --output-dir ./output
+Get started by picking one of the strategies below:
 
-# Create a new Globus Search index
-spawn search create-index --display-name "My Data Index" --description "Index for my research data"
+* [Ingest Files Locally](docs/globus_search_integration.md)
+* [Ingest Files Remotely with Globus Compute](docs/globus_compute_flow_integration.md)
 
-# Run the crawler and publish to Globus Search
-spawn crawl /path/to/directory --search-index "your-search-index-uuid" --save-json
+Then follow this doc to build your portal: 
 
-# Extract metadata from a single file and save as JSON
-spawn extract /path/to/file --save-json
-
-# Get an entry from Globus Search
-spawn get-entry "file:///path/to/file" --search-index "your-search-index-uuid"
-
-# Fork the Globus template search portal
-spawn github fork-portal --name "my-search-portal" --clone-dir ./portal
-
-# Configure the portal with your index
-spawn github configure-portal ./portal --index-name "your-search-index-uuid" --title "My Search Portal"
-
-# Configure the portal and push changes to GitHub
-spawn github configure-portal ./portal --index-name "your-search-index-uuid" --title "My Search Portal" --push --repo-owner "your-username" --repo-name "my-search-portal"
-
-# Crawl a directory on a remote filesystem using Globus Compute
-spawn compute remote-crawl /path/to/directory --endpoint-id "your-compute-endpoint-id" --search-index "your-search-index-uuid"
-
-# Create a Globus Flow for SPAwn
-spawn flow create
-
-# Run a Globus Flow to orchestrate the entire process
-spawn flow run --compute-endpoint-id "your-compute-endpoint-id" --directory "/path/to/directory" --search-index "your-search-index-uuid" --portal-name "my-search-portal" --portal-title "My Search Portal"
-```
+* [Configure and Build your SPA Portal](docs/github_integration.md)
 
 ## Configuration
 
