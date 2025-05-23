@@ -27,13 +27,14 @@ pip install -e .
 
 ## Usage
 
-Get started by picking one of the strategies below:
+Get started with our quickstart guide:
+
+* [Quickstart Guide](docs/quickstart.md) - Go from nothing to a running portal in minutes
+
+Or dive deeper with these detailed guides:
 
 * [Ingest Files Locally](docs/globus_search_integration.md)
 * [Ingest Files Remotely with Globus Compute](docs/globus_compute_flow_integration.md)
-
-Then follow this doc to build your portal: 
-
 * [Configure and Build your SPA Portal](docs/github_integration.md)
 
 ## Configuration
