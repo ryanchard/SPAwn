@@ -3,6 +3,7 @@ Commands for crawling directories and extracting metadata.
 """
 
 import json
+import sys
 import logging
 from pathlib import Path
 from typing import List, Optional
@@ -162,8 +163,6 @@ def crawl(
     index_uuid = search_index or config.globus_search_index
     if not index_uuid:
         logger.error("No Globus Search index UUID provided")
-        import sys
-
         sys.exit(1)
 
     client = GlobusSearchClient(
