@@ -14,6 +14,7 @@ import spawn.cli.github_commands
 import spawn.cli.compute_commands
 import spawn.cli.flow_commands
 import spawn.cli.search_commands
+import spawn.cli.portal_commands
 
 
 def main():
